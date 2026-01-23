@@ -14,13 +14,14 @@ type LogoProps = {
   onClick?: () => void;
 };
 
+// Controlit: Increased logo size for cleaner branding
 const StyledContainer = styled.div`
-  height: ${({ theme }) => theme.spacing(12)};
+  height: ${({ theme }) => theme.spacing(16)};
   margin-bottom: ${({ theme }) => theme.spacing(4)};
   margin-top: ${({ theme }) => theme.spacing(4)};
 
   position: relative;
-  width: ${({ theme }) => theme.spacing(12)};
+  width: ${({ theme }) => theme.spacing(16)};
 `;
 
 const StyledSecondaryLogo = styled.img`
@@ -85,21 +86,11 @@ export const Logo = ({
       ) : (
         <StyledPrimaryLogo src={primaryLogoUrl} />
       )}
-      {isDefined(secondaryLogoUrl) ? (
+      {/* Controlit: Only show secondary logo if explicitly uploaded, no placeholder avatar */}
+      {isDefined(secondaryLogoUrl) && (
         <StyledSecondaryLogoContainer>
           <StyledSecondaryLogo src={secondaryLogoUrl} />
         </StyledSecondaryLogoContainer>
-      ) : (
-        isDefined(placeholder) && (
-          <StyledSecondaryLogoContainer>
-            <Avatar
-              size="lg"
-              placeholder={placeholder}
-              type="squared"
-              placeholderColorSeed={placeholder}
-            />
-          </StyledSecondaryLogoContainer>
-        )
       )}
     </StyledContainer>
   );

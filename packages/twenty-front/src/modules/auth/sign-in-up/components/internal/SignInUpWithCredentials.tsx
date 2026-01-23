@@ -73,7 +73,8 @@ export const SignInUpWithCredentials = () => {
 
   const buttonTitle = useMemo(() => {
     if (signInUpStep === SignInUpStep.Init) {
-      return t`Continue with Email`;
+      // Controlit: Simplified button text for sales team
+      return t`Login`;
     }
 
     if (
