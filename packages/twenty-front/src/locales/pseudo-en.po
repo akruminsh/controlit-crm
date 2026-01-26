@@ -1579,9 +1579,9 @@ msgstr ""
 msgid "Bullet List"
 msgstr ""
 
-#. js-lingui-id: 8Pfllj
+#. js-lingui-id: MIKfba
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
-msgid "By using Twenty, you agree to the"
+msgid "By using Controlit CRM, you agree to the"
 msgstr ""
 
 #. js-lingui-id: Yx41df
@@ -2221,11 +2221,6 @@ msgstr ""
 #: src/modules/auth/sign-in-up/components/SignInUpGlobalScopeForm.tsx
 #: src/modules/auth/sign-in-up/components/internal/SignInUpWithCredentials.tsx
 msgid "Continue"
-msgstr ""
-
-#. js-lingui-id: RvVi9c
-#: src/modules/auth/sign-in-up/components/internal/SignInUpWithCredentials.tsx
-msgid "Continue with Email"
 msgstr ""
 
 #. js-lingui-id: oZyG4C
@@ -3287,9 +3282,19 @@ msgstr ""
 msgid "Drop file here..."
 msgstr ""
 
+#. js-lingui-id: euc6Ns
+#: src/modules/action-menu/actions/record-actions/constants/WorkflowActionsConfig.tsx
+msgid "Duplicate"
+msgstr ""
+
 #. js-lingui-id: qaE1sk
 #: src/modules/workflow/workflow-steps/components/WorkflowStepFooter.tsx
 msgid "Duplicate node"
+msgstr ""
+
+#. js-lingui-id: 2RpRNn
+#: src/modules/action-menu/actions/record-actions/constants/WorkflowActionsConfig.tsx
+msgid "Duplicate Workflow"
 msgstr ""
 
 #. js-lingui-id: cheWPw
@@ -4109,6 +4114,11 @@ msgstr ""
 #. js-lingui-id: pUligB
 #: src/modules/settings/admin-panel/health-status/hooks/useDeleteJobs.ts
 msgid "Failed to delete jobs. Please try again later."
+msgstr ""
+
+#. js-lingui-id: WYXxQF
+#: src/modules/action-menu/actions/record-actions/single-record/workflow-actions/components/DuplicateWorkflowSingleRecordAction.tsx
+msgid "Failed to duplicate workflow"
 msgstr ""
 
 #. js-lingui-id: Ukrbw5
@@ -5450,6 +5460,11 @@ msgstr ""
 #. js-lingui-id: hykMbH
 #: src/modules/information-banner/components/impersonate/InformationBannerIsImpersonating.tsx
 msgid "Logged in as {impersonatedUser}"
+msgstr ""
+
+#. js-lingui-id: z0t9bb
+#: src/modules/auth/sign-in-up/components/internal/SignInUpWithCredentials.tsx
+msgid "Login"
 msgstr ""
 
 #. js-lingui-id: VLuNNu
@@ -9631,9 +9646,9 @@ msgstr ""
 msgid "Week"
 msgstr ""
 
-#. js-lingui-id: ke0EDP
+#. js-lingui-id: +qw5Gk
 #: src/pages/auth/SignInUp.tsx
-msgid "Welcome to {workspaceName}"
+msgid "Welcome back to Controlit Factory CRM"
 msgstr ""
 
 #. js-lingui-id: cE4SvC
@@ -9660,6 +9675,11 @@ msgstr ""
 #. js-lingui-id: 3J7l5w
 #: src/pages/settings/admin-panel/SettingsAdminQueueDetail.tsx
 msgid "Worker"
+msgstr ""
+
+#. js-lingui-id: 2jzcC5
+#: src/modules/action-menu/actions/record-actions/single-record/workflow-actions/components/DuplicateWorkflowSingleRecordAction.tsx
+msgid "Workflow duplicated successfully"
 msgstr ""
 
 #. js-lingui-id: woYYQq
@@ -9931,11 +9951,6 @@ msgstr ""
 #. js-lingui-id: 2Fkd7s
 #: src/modules/billing/hooks/useBillingWording.ts
 msgid "Your trial period will end, and you will be charged ${yearlyPrice} per user per year billed annually. A prorata with your current subscription will be applied."
-msgstr ""
-
-#. js-lingui-id: YQK8fJ
-#: src/pages/auth/SignInUp.tsx
-msgid "Your Workspace"
 msgstr ""
 
 #. js-lingui-id: oC6WBs
