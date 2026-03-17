@@ -141,6 +141,17 @@ export const usePageChangeEffectNavigateLocation = () => {
   }
 
   if (isMatchingLocation(location, AppPath.Index) && isLoggedIn) {
+    // Guard: if defaultHomePagePath resolves to a Settings path, do not
+    // redirect — this breaks the navigation loop that occurs when
+    // navigationMemorizedUrlState defaults to '/' (e.g. after a crash while
+    // the user was in Settings). Without this guard the cycle is:
+    //   '/' → Settings (via defaultHomePagePath) → '/' (back button) → loop
+    if (
+      isDefined(defaultHomePagePath) &&
+      defaultHomePagePath.toString().startsWith(`/${AppPath.Settings}`)
+    ) {
+      return;
+    }
     return defaultHomePagePath;
   }
 

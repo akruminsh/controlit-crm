@@ -67,15 +67,15 @@ export const useRecordsFieldVisibleGqlFields = ({
     deletedAt: true,
     noteTargets: generateActivityTargetGqlFields({
       activityObjectNameSingular: CoreObjectNameSingular.Note,
-      depth: 1,
+      depth: 0,
       objectMetadataItems,
-      shouldOnlyLoadActivityIdentifiers: false,
+      shouldOnlyLoadActivityIdentifiers: true,
     }),
     taskTargets: generateActivityTargetGqlFields({
       activityObjectNameSingular: CoreObjectNameSingular.Task,
-      depth: 1,
+      depth: 0,
       objectMetadataItems,
-      shouldOnlyLoadActivityIdentifiers: false,
+      shouldOnlyLoadActivityIdentifiers: true,
     }),
   };
 };

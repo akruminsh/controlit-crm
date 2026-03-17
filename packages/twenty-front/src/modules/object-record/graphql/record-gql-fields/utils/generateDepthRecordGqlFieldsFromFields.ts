@@ -39,9 +39,10 @@ export const generateDepthRecordGqlFieldsFromFields = ({
         );
 
         if (!targetObjectMetadataItem) {
-          throw new Error(
-            `Target object metadata item not found for ${fieldMetadata.name}`,
-          );
+          // Gracefully skip fields whose target object metadata cannot be
+          // resolved (e.g. during a partial metadata load after a crash) rather
+          // than throwing and crashing RecordIndexPage.
+          return recordGqlFields;
         }
 
         const labelIdentifierFieldMetadataItem =
