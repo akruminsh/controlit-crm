@@ -22,6 +22,7 @@ import {
 } from 'src/modules/controlit/territory-access/constants/controlit-territory.constants';
 import {
   getRecordTerritory,
+  isRecordCreatedByWorkspaceMember,
   isTaskOwnedByWorkspaceMember,
   mergeObjectFilter,
 } from 'src/modules/controlit/territory-access/utils/controlit-territory-access.util';
@@ -72,6 +73,8 @@ const SINGLE_RECORD_MUTATION_METHODS = new Set<string>([
   CommonQueryNames.DELETE_ONE,
   CommonQueryNames.RESTORE_ONE,
 ]);
+
+const USER_OWNED_MUTATION_OBJECTS = new Set<string>(['opportunity', 'task']);
 
 @Injectable()
 export class ControlitTerritoryAccessService {
@@ -304,7 +307,10 @@ export class ControlitTerritoryAccessService {
       this.throwPermissionDenied();
     }
 
-    if (objectName !== 'task' && !scope.canManageTerritory) {
+    if (
+      !USER_OWNED_MUTATION_OBJECTS.has(objectName) &&
+      !scope.canManageTerritory
+    ) {
       this.throwPermissionDenied();
     }
 
@@ -358,7 +364,10 @@ export class ControlitTerritoryAccessService {
       );
     }
 
-    if (objectName !== 'task' && !scope.canManageTerritory) {
+    if (
+      !USER_OWNED_MUTATION_OBJECTS.has(objectName) &&
+      !scope.canManageTerritory
+    ) {
       this.throwPermissionDenied();
     }
 
@@ -374,6 +383,14 @@ export class ControlitTerritoryAccessService {
       objectName === 'task' &&
       !scope.canManageTerritory &&
       !isTaskOwnedByWorkspaceMember(record, scope.workspaceMemberId)
+    ) {
+      this.throwPermissionDenied();
+    }
+
+    if (
+      objectName === 'opportunity' &&
+      !scope.canManageTerritory &&
+      !isRecordCreatedByWorkspaceMember(record, scope.workspaceMemberId)
     ) {
       this.throwPermissionDenied();
     }

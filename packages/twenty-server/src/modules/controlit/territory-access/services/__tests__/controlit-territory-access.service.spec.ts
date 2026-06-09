@@ -253,6 +253,115 @@ describe('ControlitTerritoryAccessService', () => {
     } satisfies Partial<PermissionsException>);
   });
 
+  it('allows managers to create opportunities inside their territories', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+    const payload = {
+      data: {
+        name: 'New roof project',
+        projectCountry: 'FINLAND',
+      },
+    };
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'opportunity',
+        CommonQueryNames.CREATE_ONE,
+        payload,
+      ),
+    ).resolves.toBe(payload);
+  });
+
+  it('blocks managers from creating opportunities outside their territories', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'opportunity',
+        CommonQueryNames.CREATE_ONE,
+        {
+          data: {
+            name: 'New roof project',
+            projectCountry: 'ESTONIA',
+          },
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: PermissionsExceptionCode.PERMISSION_DENIED,
+    } satisfies Partial<PermissionsException>);
+  });
+
+  it('allows managers to update opportunities created by them inside their territories', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+      record: {
+        id: 'opportunity-id',
+        projectCountry: 'FINLAND',
+        createdBy: { workspaceMemberId: 'member-id' },
+      },
+    });
+    const payload = {
+      id: 'opportunity-id',
+      data: { name: 'Updated roof project' },
+    };
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'opportunity',
+        CommonQueryNames.UPDATE_ONE,
+        payload,
+      ),
+    ).resolves.toBe(payload);
+  });
+
+  it('blocks managers from updating opportunities created by someone else', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+      record: {
+        id: 'opportunity-id',
+        projectCountry: 'FINLAND',
+        createdBy: { workspaceMemberId: 'other-member-id' },
+      },
+    });
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'opportunity',
+        CommonQueryNames.UPDATE_ONE,
+        { id: 'opportunity-id', data: { name: 'Updated roof project' } },
+      ),
+    ).rejects.toMatchObject({
+      code: PermissionsExceptionCode.PERMISSION_DENIED,
+    } satisfies Partial<PermissionsException>);
+  });
+
   it('blocks branch managers from updating records outside their territories', async () => {
     const { service } = setup({
       assignmentRows: [

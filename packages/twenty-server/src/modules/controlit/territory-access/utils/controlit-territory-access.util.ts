@@ -12,6 +12,12 @@ type TaskOwnershipRecord = {
   } | null;
 };
 
+type CreatedByOwnershipRecord = {
+  createdBy?: {
+    workspaceMemberId?: string | null;
+  } | null;
+};
+
 export const mergeObjectFilter = (
   existingFilter: ObjectRecordFilter | undefined,
   fieldName: string,
@@ -49,6 +55,11 @@ export const isTaskOwnedByWorkspaceMember = (
 ): boolean =>
   task.assigneeId === workspaceMemberId ||
   task.createdBy?.workspaceMemberId === workspaceMemberId;
+
+export const isRecordCreatedByWorkspaceMember = (
+  record: CreatedByOwnershipRecord,
+  workspaceMemberId: string,
+): boolean => record.createdBy?.workspaceMemberId === workspaceMemberId;
 
 export const getRecordTerritory = (
   record: Record<string, unknown>,

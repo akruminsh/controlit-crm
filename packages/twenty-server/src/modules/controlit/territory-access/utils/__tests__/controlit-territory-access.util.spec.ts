@@ -1,6 +1,7 @@
 import {
   buildTaskManagerOwnershipFilter,
   getRecordTerritory,
+  isRecordCreatedByWorkspaceMember,
   isTaskOwnedByWorkspaceMember,
   mergeObjectFilter,
 } from 'src/modules/controlit/territory-access/utils/controlit-territory-access.util';
@@ -76,6 +77,26 @@ describe('controlit territory access utils', () => {
           { createdBy: { workspaceMemberId: { eq: 'member-id' } } },
         ],
       });
+    });
+  });
+
+  describe('created-by ownership', () => {
+    it('matches records created by the workspace member', () => {
+      expect(
+        isRecordCreatedByWorkspaceMember(
+          { createdBy: { workspaceMemberId: 'member-id' } },
+          'member-id',
+        ),
+      ).toBe(true);
+    });
+
+    it('does not match records created by someone else', () => {
+      expect(
+        isRecordCreatedByWorkspaceMember(
+          { createdBy: { workspaceMemberId: 'other-member-id' } },
+          'member-id',
+        ),
+      ).toBe(false);
     });
   });
 
