@@ -67,5 +67,5 @@ jobs:
           echo "**To deploy on server:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo "cd /opt/controlit-crm && docker compose down && docker compose up -d" >> $GITHUB_STEP_SUMMARY
+          echo "cd /opt/controlit-crm && docker compose -f docker-compose.prod.yml down && docker compose -f docker-compose.prod.yml up -d" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

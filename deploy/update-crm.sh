@@ -13,16 +13,16 @@ docker pull ${REGISTRY}/${IMAGE}:latest
 
 echo "🔄 Stopping current containers..."
 cd ${DEPLOY_DIR}
-docker compose down
+docker compose -f docker-compose.prod.yml down
 
 echo "🚀 Starting updated containers..."
-docker compose up -d
+docker compose -f docker-compose.prod.yml up -d
 
 echo "⏳ Waiting for health check..."
 sleep 30
 
 echo "✅ Checking container status..."
-docker compose ps
+docker compose -f docker-compose.prod.yml ps
 
 echo ""
 echo "🎉 Update complete!"
