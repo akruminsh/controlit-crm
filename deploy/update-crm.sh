@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-DEPLOY_DIR="/opt/controlit-crm"
+DEPLOY_DIR="${DEPLOY_DIR:-/opt/controlit-crm}"
 COMPOSE_FILE="${COMPOSE_FILE:-}"
 ENV_FILE=".env"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-180}"
@@ -50,14 +50,19 @@ read_env_value() {
 
 validate_database_password() {
   if [[ ! -f "${ENV_FILE}" ]]; then
-    echo "ERROR: ${ENV_FILE} is missing in ${DEPLOY_DIR}." >&2
-    exit 1
+    echo "No ${ENV_FILE} file found; assuming the compose file defines database connection settings directly."
+    return
   fi
 
   local pg_password
   pg_password="$(read_env_value "PG_DATABASE_PASSWORD")"
 
-  if [[ -z "${pg_password}" || "${pg_password}" == CHANGE_ME* ]]; then
+  if [[ -z "${pg_password}" ]]; then
+    echo "PG_DATABASE_PASSWORD is not set in ${ENV_FILE}; assuming the compose file defines PG_DATABASE_URL directly."
+    return
+  fi
+
+  if [[ "${pg_password}" == CHANGE_ME* ]]; then
     echo "ERROR: PG_DATABASE_PASSWORD must be set before updating Controlit CRM." >&2
     exit 1
   fi
