@@ -6,9 +6,12 @@ set -euo pipefail
 
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/controlit-crm}"
 COMPOSE_FILE="${COMPOSE_FILE:-}"
+COMPOSE_OVERRIDE_FILE="${COMPOSE_OVERRIDE_FILE:-}"
 ENV_FILE=".env"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-180}"
 HEALTH_POLL_SECONDS="${HEALTH_POLL_SECONDS:-5}"
+ALLOW_LATEST_TAG="${ALLOW_LATEST_TAG:-false}"
+COMPOSE_FILES=()
 
 resolve_compose_file() {
   if [[ -n "${COMPOSE_FILE}" ]]; then
@@ -16,10 +19,7 @@ resolve_compose_file() {
       echo "ERROR: COMPOSE_FILE=${COMPOSE_FILE} does not exist in ${DEPLOY_DIR}." >&2
       exit 1
     fi
-    return
-  fi
-
-  if [[ -f "docker-compose.prod.yml" ]]; then
+  elif [[ -f "docker-compose.prod.yml" ]]; then
     COMPOSE_FILE="docker-compose.prod.yml"
   elif [[ -f "docker-compose.yml" ]]; then
     COMPOSE_FILE="docker-compose.yml"
@@ -27,10 +27,29 @@ resolve_compose_file() {
     echo "ERROR: No docker-compose.prod.yml or docker-compose.yml found in ${DEPLOY_DIR}." >&2
     exit 1
   fi
+
+  COMPOSE_FILES=("${COMPOSE_FILE}")
+
+  if [[ -n "${COMPOSE_OVERRIDE_FILE}" ]]; then
+    if [[ ! -f "${COMPOSE_OVERRIDE_FILE}" ]]; then
+      echo "ERROR: COMPOSE_OVERRIDE_FILE=${COMPOSE_OVERRIDE_FILE} does not exist in ${DEPLOY_DIR}." >&2
+      exit 1
+    fi
+    COMPOSE_FILES+=("${COMPOSE_OVERRIDE_FILE}")
+  elif [[ -f "docker-compose.override.yml" ]]; then
+    COMPOSE_OVERRIDE_FILE="docker-compose.override.yml"
+    COMPOSE_FILES+=("${COMPOSE_OVERRIDE_FILE}")
+  fi
 }
 
 compose() {
-  docker compose -f "${COMPOSE_FILE}" "$@"
+  local compose_args=()
+
+  for compose_file in "${COMPOSE_FILES[@]}"; do
+    compose_args+=("-f" "${compose_file}")
+  done
+
+  docker compose "${compose_args[@]}" "$@"
 }
 
 run_upgrade_command() {
@@ -79,6 +98,33 @@ validate_database_password() {
     echo "Use only letters, numbers, dot, underscore, hyphen, and tilde; the password was not printed." >&2
     exit 1
   fi
+}
+
+validate_image_tags() {
+  if [[ "${ALLOW_LATEST_TAG}" == "true" ]]; then
+    echo "WARNING: ALLOW_LATEST_TAG=true; immutable image tag check is skipped."
+    return
+  fi
+
+  local images
+  images="$(compose config --images 2>/dev/null || true)"
+
+  if [[ -z "${images}" ]]; then
+    echo "ERROR: Could not resolve compose images for immutable tag validation." >&2
+    exit 1
+  fi
+
+  while IFS= read -r image; do
+    if [[ "${image}" =~ ^ghcr\.io/akruminsh/controlit-crm:(.+)$ ]]; then
+      local tag="${BASH_REMATCH[1]}"
+
+      if [[ ! "${tag}" =~ ^[0-9a-f]{40}$ ]]; then
+        echo "ERROR: Refusing to deploy ${image}." >&2
+        echo "Set TAG to the immutable 40-character Git SHA image tag before running this script." >&2
+        exit 1
+      fi
+    fi
+  done <<<"${images}"
 }
 
 print_status_and_logs() {
@@ -144,8 +190,9 @@ wait_for_server_health() {
 cd "${DEPLOY_DIR}"
 resolve_compose_file
 validate_database_password
+validate_image_tags
 
-echo "Using compose file: ${COMPOSE_FILE}"
+echo "Using compose files: ${COMPOSE_FILES[*]}"
 echo "Pulling latest Controlit CRM server and worker images..."
 compose pull server worker
 

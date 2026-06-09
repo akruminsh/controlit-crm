@@ -646,6 +646,12 @@ On VPS:
 ssh controlit-crm-vps 'mkdir -p /opt/controlit-crm/backups && cd /opt/controlit-crm && docker compose exec -T db pg_dump -U "$PG_DATABASE_USER" -d default --format=custom --no-owner --no-acl > backups/pre-upgrade-$(date +%Y%m%d-%H%M%S).dump'
 ```
 
+Use the database container environment, not host shell variables, on deployments where DB credentials live directly in compose:
+
+```bash
+ssh controlit-crm-vps 'mkdir -p /opt/controlit-crm/backups && cd /opt/controlit-crm && docker compose exec -T db sh -c '\''pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner --no-acl'\'' > backups/pre-upgrade-$(date +%Y%m%d-%H%M%S).dump'
+```
+
 Expected:
 - Backup file exists under `/opt/controlit-crm/backups/`.
 - Record exact backup path.
@@ -655,34 +661,29 @@ Expected:
 On VPS:
 
 ```bash
-ssh controlit-crm-vps 'mkdir -p /opt/controlit-crm-staging'
-scp deploy/docker-compose.prod.yml controlit-crm-vps:/opt/controlit-crm-staging/docker-compose.yml
+ssh controlit-crm-vps 'mkdir -p /opt/controlit-crm-staging && cp /opt/controlit-crm/docker-compose.yml /opt/controlit-crm-staging/docker-compose.yml'
 ```
 
 Then edit staging compose on VPS:
 
 ```bash
-ssh controlit-crm-vps 'cd /opt/controlit-crm-staging && perl -0pi -e "s/name: controlit-crm/name: controlit-crm-staging/" docker-compose.yml && perl -0pi -e "s/3000:3000/3100:3000/" docker-compose.yml'
+export CANDIDATE_SHA="$(git rev-parse HEAD)"
+ssh controlit-crm-vps 'cd /opt/controlit-crm-staging && perl -0pi -e "s/name: controlit-crm/name: controlit-crm-staging/" docker-compose.yml && perl -0pi -e "s#ghcr\.io/akruminsh/controlit-crm:(latest|[0-9a-f]{40})#ghcr.io/akruminsh/controlit-crm:'"$CANDIDATE_SHA"'#g" docker-compose.yml && perl -0pi -e "s#127\.0\.0\.1:3000:3000#127.0.0.1:3001:3000#g" docker-compose.yml && perl -0pi -e "s#SERVER_URL: https://crm\.controlitfactory\.eu#SERVER_URL: http://127.0.0.1:3001#g" docker-compose.yml'
 ```
 
 Expected:
 - Staging project name is different from production.
-- Staging server port is `3100`.
+- Staging server port is `3001`.
+- Staging `SERVER_URL` resolves to `http://127.0.0.1:3001`; UI/API checks cannot hit production by accident.
+- `docker-compose.override.yml` disables cron registration, mail/calendar sync providers, and real email sending in staging.
 
 - [ ] **Step 3: Restore backup into staging DB**
 
 On VPS:
 
 ```bash
-export CANDIDATE_SHA="$(git rev-parse HEAD)"
-ssh controlit-crm-vps "cd /opt/controlit-crm-staging && cp /opt/controlit-crm/.env .env && TAG=$CANDIDATE_SHA docker compose up -d db redis && sleep 10 && docker compose exec -T db pg_restore -U \"\$PG_DATABASE_USER\" -d default --clean --if-exists --no-owner --no-acl /backup/pre-upgrade.dump"
-```
-
-If the direct `/backup/pre-upgrade.dump` path is not mounted, copy the dump into the staging DB container:
-
-```bash
 export BACKUP_FILE="$(ssh controlit-crm-vps 'cd /opt/controlit-crm && ls -t backups/pre-upgrade-*.dump | head -n1')"
-ssh controlit-crm-vps "cd /opt/controlit-crm-staging && docker compose cp /opt/controlit-crm/$BACKUP_FILE db:/tmp/pre-upgrade.dump && docker compose exec -T db pg_restore -U \"\$PG_DATABASE_USER\" -d default --clean --if-exists --no-owner --no-acl /tmp/pre-upgrade.dump"
+ssh controlit-crm-vps "cd /opt/controlit-crm-staging && COMPOSE_PROJECT_NAME=controlit-crm-staging docker compose up -d db redis && COMPOSE_PROJECT_NAME=controlit-crm-staging docker compose exec -T db sh -c 'psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -v ON_ERROR_STOP=1 -c \"DROP SCHEMA public CASCADE; CREATE SCHEMA public;\"' && COMPOSE_PROJECT_NAME=controlit-crm-staging docker compose exec -T db sh -c 'pg_restore -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" --no-owner --no-acl --clean --if-exists' < /opt/controlit-crm/$BACKUP_FILE"
 ```
 
 Expected:
@@ -696,42 +697,20 @@ Expected:
 **Files:**
 - No source changes unless upgrade finds a code defect.
 
-- [ ] **Step 1: Run fail-fast upgrade dry-run**
+- [ ] **Step 1: Run fail-fast staging upgrade script**
 
 On VPS:
 
 ```bash
 export CANDIDATE_SHA="$(git rev-parse HEAD)"
-ssh controlit-crm-vps "cd /opt/controlit-crm-staging && TAG=$CANDIDATE_SHA docker compose run --rm --entrypoint \"\" server yarn command:prod upgrade --dry-run --verbose"
+scp deploy/update-crm.sh controlit-crm-vps:/opt/controlit-crm-staging/update-crm.sh
+ssh controlit-crm-vps "chmod +x /opt/controlit-crm-staging/update-crm.sh && cd /opt/controlit-crm-staging && DEPLOY_DIR=/opt/controlit-crm-staging COMPOSE_PROJECT_NAME=controlit-crm-staging COMPOSE_FILE=docker-compose.yml COMPOSE_OVERRIDE_FILE=docker-compose.override.yml HEALTH_TIMEOUT_SECONDS=300 ./update-crm.sh"
 ```
 
 Expected:
 - Exit code `0`.
-- Upgrade summary reports `0` workspace failures.
-
-- [ ] **Step 2: Run fail-fast upgrade apply**
-
-On VPS:
-
-```bash
-export CANDIDATE_SHA="$(git rev-parse HEAD)"
-ssh controlit-crm-vps "cd /opt/controlit-crm-staging && TAG=$CANDIDATE_SHA docker compose run --rm --entrypoint \"\" server yarn command:prod upgrade --verbose"
-```
-
-Expected:
-- Exit code `0`.
-- Upgrade summary reports `0` workspace failures.
-
-- [ ] **Step 3: Flush cache and start staging app**
-
-On VPS:
-
-```bash
-export CANDIDATE_SHA="$(git rev-parse HEAD)"
-ssh controlit-crm-vps "cd /opt/controlit-crm-staging && TAG=$CANDIDATE_SHA docker compose run --rm --entrypoint \"\" server yarn command:prod cache:flush && TAG=$CANDIDATE_SHA docker compose up -d server worker"
-```
-
-Expected:
+- Script performs legacy DB migration bootstrap with `--force --include-slow`, cache flush, upgrade dry-run, upgrade apply, cache flush, server health wait, then worker start.
+- Logs show cron registration disabled in staging.
 - Staging server becomes healthy.
 
 - [ ] **Step 4: Check staging health**
@@ -890,24 +869,21 @@ On VPS:
 
 ```bash
 export FINAL_SHA="$(git rev-parse HEAD)"
-ssh controlit-crm-vps "cd /opt/controlit-crm && TAG=$FINAL_SHA docker compose pull server worker"
-ssh controlit-crm-vps "cd /opt/controlit-crm && TAG=$FINAL_SHA docker compose run --rm --entrypoint \"\" server yarn command:prod upgrade --dry-run --verbose"
-ssh controlit-crm-vps "cd /opt/controlit-crm && TAG=$FINAL_SHA docker compose run --rm --entrypoint \"\" server yarn command:prod upgrade --verbose"
-ssh controlit-crm-vps "cd /opt/controlit-crm && TAG=$FINAL_SHA docker compose run --rm --entrypoint \"\" server yarn command:prod cache:flush"
+scp deploy/update-crm.sh controlit-crm-vps:/opt/controlit-crm/update-crm.sh
+ssh controlit-crm-vps "chmod +x /opt/controlit-crm/update-crm.sh && cd /opt/controlit-crm && DEPLOY_DIR=/opt/controlit-crm TAG=$FINAL_SHA HEALTH_TIMEOUT_SECONDS=300 ./update-crm.sh"
 ```
 
 Expected:
-- Dry-run succeeds.
-- Apply succeeds.
-- Cache flush succeeds.
+- Script refuses `latest` and uses the immutable final SHA.
+- Script performs DB migration bootstrap, upgrade dry-run, upgrade apply, cache flush, server health wait, then worker start.
 
-- [ ] **Step 6: Start production server and worker on final image**
+- [ ] **Step 6: Confirm production server and worker are on final image**
 
 On VPS:
 
 ```bash
 export FINAL_SHA="$(git rev-parse HEAD)"
-ssh controlit-crm-vps "cd /opt/controlit-crm && TAG=$FINAL_SHA docker compose up -d server worker"
+ssh controlit-crm-vps 'cd /opt/controlit-crm && docker compose ps server worker'
 ```
 
 Expected:
