@@ -172,6 +172,50 @@ describe('ControlitTerritoryAccessService', () => {
     ).resolves.toBe(payload);
   });
 
+  it('does not change unrelated object reads', async () => {
+    const { service, coreDataSource } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+    const payload = { filter: { name: { ilike: '%customer%' } } };
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'view',
+        CommonQueryNames.FIND_MANY,
+        payload,
+      ),
+    ).resolves.toBe(payload);
+    expect(coreDataSource.query).not.toHaveBeenCalled();
+  });
+
+  it('does not change attachment reads for admin roles', async () => {
+    const { service } = setup({
+      isAdmin: true,
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+    const payload = { filter: { id: { eq: 'attachment-id' } } };
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'attachment',
+        CommonQueryNames.FIND_MANY,
+        payload,
+      ),
+    ).resolves.toBe(payload);
+  });
+
   it('fails closed for scoped reads when the assignment table is not migrated yet', async () => {
     const { service } = setup({
       assignmentError: { code: '42P01' },
@@ -372,6 +416,108 @@ describe('ControlitTerritoryAccessService', () => {
               },
             ],
           },
+        ],
+      },
+    });
+  });
+
+  it('adds territory filters to scoped attachment reads', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'attachment',
+        CommonQueryNames.FIND_MANY,
+        { filter: { id: { eq: 'attachment-id' } } },
+      ),
+    ).resolves.toEqual({
+      filter: {
+        and: [
+          { id: { eq: 'attachment-id' } },
+          {
+            or: [
+              { targetCompany: { companyCountry: { in: ['FINLAND'] } } },
+              { targetPerson: { personTerritory: { in: ['FINLAND'] } } },
+              {
+                targetOpportunity: {
+                  projectCountry: { in: ['FINLAND'] },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
+  it('adds territory filters to scoped timeline activity reads', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['ESTONIA', 'LATVIA'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'timelineActivity',
+        CommonQueryNames.FIND_MANY,
+        { filter: { id: { eq: 'timeline-activity-id' } } },
+      ),
+    ).resolves.toEqual({
+      filter: {
+        and: [
+          { id: { eq: 'timeline-activity-id' } },
+          {
+            or: [
+              {
+                targetCompany: {
+                  companyCountry: { in: ['ESTONIA', 'LATVIA'] },
+                },
+              },
+              {
+                targetPerson: {
+                  personTerritory: { in: ['ESTONIA', 'LATVIA'] },
+                },
+              },
+              {
+                targetOpportunity: {
+                  projectCountry: { in: ['ESTONIA', 'LATVIA'] },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
+  it('fails closed for scoped attachment reads when user has no territories', async () => {
+    const { service } = setup();
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'attachment',
+        CommonQueryNames.FIND_MANY,
+        { filter: { id: { eq: 'attachment-id' } } },
+      ),
+    ).resolves.toEqual({
+      filter: {
+        and: [
+          { id: { eq: 'attachment-id' } },
+          { id: { eq: '00000000-0000-0000-0000-000000000000' } },
         ],
       },
     });

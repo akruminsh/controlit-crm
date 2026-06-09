@@ -62,7 +62,7 @@ type ControlitRelationTerritoryFilterSpec = {
 };
 
 type ControlitRelationReadFilterSpec = {
-  owner: ControlitRelationTerritoryFilterSpec;
+  owner?: ControlitRelationTerritoryFilterSpec;
   targets: readonly ControlitRelationTerritoryFilterSpec[];
 };
 
@@ -82,6 +82,26 @@ const CONTROLIT_RELATION_READ_FILTERS_BY_OBJECT = {
   },
   taskTarget: {
     owner: { relationName: 'task', territoryFieldName: 'taskTerritory' },
+    targets: [
+      { relationName: 'targetCompany', territoryFieldName: 'companyCountry' },
+      { relationName: 'targetPerson', territoryFieldName: 'personTerritory' },
+      {
+        relationName: 'targetOpportunity',
+        territoryFieldName: 'projectCountry',
+      },
+    ],
+  },
+  attachment: {
+    targets: [
+      { relationName: 'targetCompany', territoryFieldName: 'companyCountry' },
+      { relationName: 'targetPerson', territoryFieldName: 'personTerritory' },
+      {
+        relationName: 'targetOpportunity',
+        territoryFieldName: 'projectCountry',
+      },
+    ],
+  },
+  timelineActivity: {
     targets: [
       { relationName: 'targetCompany', territoryFieldName: 'companyCountry' },
       { relationName: 'targetPerson', territoryFieldName: 'personTerritory' },
@@ -366,19 +386,7 @@ export class ControlitTerritoryAccessService {
     const scopedFilter =
       scope.territories.length === 0
         ? ({ id: { eq: CONTROLIT_NO_RECORD_ID } } as ObjectRecordFilter)
-        : ({
-            and: [
-              this.buildRelationTerritoryFilter(
-                relationReadFilterSpecs.owner,
-                scope,
-              ),
-              {
-                or: relationReadFilterSpecs.targets.map((spec) =>
-                  this.buildRelationTerritoryFilter(spec, scope),
-                ),
-              },
-            ],
-          } as ObjectRecordFilter);
+        : this.buildRelationReadFilter(relationReadFilterSpecs, scope);
 
     return {
       ...payload,
@@ -387,6 +395,28 @@ export class ControlitTerritoryAccessService {
         scopedFilter,
       ),
     } as ResolverArgs;
+  }
+
+  private buildRelationReadFilter(
+    relationReadFilterSpecs: ControlitRelationReadFilterSpec,
+    scope: ControlitTerritoryAccessScope,
+  ): ObjectRecordFilter {
+    const targetFilter = {
+      or: relationReadFilterSpecs.targets.map((spec) =>
+        this.buildRelationTerritoryFilter(spec, scope),
+      ),
+    } as ObjectRecordFilter;
+
+    if (!relationReadFilterSpecs.owner) {
+      return targetFilter;
+    }
+
+    return {
+      and: [
+        this.buildRelationTerritoryFilter(relationReadFilterSpecs.owner, scope),
+        targetFilter,
+      ],
+    } as ObjectRecordFilter;
   }
 
   private buildRelationTerritoryFilter(
