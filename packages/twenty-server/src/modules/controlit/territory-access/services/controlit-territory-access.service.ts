@@ -108,6 +108,7 @@ export class ControlitTerritoryAccessService {
     }
 
     if (
+      methodName === CommonQueryNames.CREATE_MANY ||
       methodName === CommonQueryNames.FIND_DUPLICATES ||
       methodName === CommonQueryNames.MERGE_MANY
     ) {
@@ -121,25 +122,6 @@ export class ControlitTerritoryAccessService {
         scope,
         (payload as PayloadWithData).data,
       );
-
-      return payload;
-    }
-
-    if (methodName === CommonQueryNames.CREATE_MANY) {
-      const data = (payload as PayloadWithData).data;
-
-      if (!Array.isArray(data)) {
-        this.throwPermissionDenied();
-      }
-
-      for (const record of data) {
-        this.validateCreateDataOrThrow(
-          objectName,
-          territoryFieldName,
-          scope,
-          record,
-        );
-      }
 
       return payload;
     }

@@ -325,6 +325,43 @@ describe('ControlitTerritoryAccessService', () => {
     );
   });
 
+  it.each([
+    ['opportunity', 'projectCountry'],
+    ['task', 'taskTerritory'],
+  ])(
+    'blocks managers from bulk-creating %s records inside their territories',
+    async (objectName, territoryFieldName) => {
+      const { service } = setup({
+        assignmentRows: [
+          {
+            territories: ['FINLAND'],
+            canManageTerritory: false,
+          },
+        ],
+      });
+
+      await expectPermissionDenied(
+        service.applyPreQueryHook(
+          authContext,
+          objectName,
+          CommonQueryNames.CREATE_MANY,
+          {
+            data: [
+              {
+                name: 'Bulk record one',
+                [territoryFieldName]: 'FINLAND',
+              },
+              {
+                name: 'Bulk record two',
+                [territoryFieldName]: 'FINLAND',
+              },
+            ],
+          },
+        ),
+      );
+    },
+  );
+
   it('allows managers to update opportunities created by them inside their territories', async () => {
     const { service } = setup({
       assignmentRows: [
@@ -577,6 +614,7 @@ describe('ControlitTerritoryAccessService', () => {
     CommonQueryNames.DELETE_MANY,
     CommonQueryNames.RESTORE_MANY,
     CommonQueryNames.UPDATE_MANY,
+    CommonQueryNames.DESTROY_MANY,
   ])(
     'blocks canManageTerritory limited users from %s mutations',
     async (methodName) => {
