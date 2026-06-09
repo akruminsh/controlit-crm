@@ -15,6 +15,7 @@ import {
 } from 'src/engine/metadata-modules/permissions/permissions.exception';
 import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
 import {
+  CONTROLIT_NO_RECORD_ID,
   CONTROLIT_TERRITORIES,
   CONTROLIT_TERRITORY_FIELD_BY_OBJECT,
   type ControlitRestrictedObjectName,
@@ -25,6 +26,7 @@ import {
   isRecordCreatedByWorkspaceMember,
   isTaskOwnedByWorkspaceMember,
   mergeObjectFilter,
+  mergeObjectFilterWithScopedFilter,
 } from 'src/modules/controlit/territory-access/utils/controlit-territory-access.util';
 
 type ControlitTerritoryAccessRow = {
@@ -54,7 +56,42 @@ type PayloadWithId = ResolverArgs & {
   id: string;
 };
 
+type ControlitRelationTerritoryFilterSpec = {
+  relationName: string;
+  territoryFieldName: string;
+};
+
+type ControlitRelationReadFilterSpec = {
+  owner: ControlitRelationTerritoryFilterSpec;
+  targets: readonly ControlitRelationTerritoryFilterSpec[];
+};
+
 const CONTROLIT_TERRITORY_SET = new Set<string>(CONTROLIT_TERRITORIES);
+
+const CONTROLIT_RELATION_READ_FILTERS_BY_OBJECT = {
+  noteTarget: {
+    owner: { relationName: 'note', territoryFieldName: 'noteTerritory' },
+    targets: [
+      { relationName: 'targetCompany', territoryFieldName: 'companyCountry' },
+      { relationName: 'targetPerson', territoryFieldName: 'personTerritory' },
+      {
+        relationName: 'targetOpportunity',
+        territoryFieldName: 'projectCountry',
+      },
+    ],
+  },
+  taskTarget: {
+    owner: { relationName: 'task', territoryFieldName: 'taskTerritory' },
+    targets: [
+      { relationName: 'targetCompany', territoryFieldName: 'companyCountry' },
+      { relationName: 'targetPerson', territoryFieldName: 'personTerritory' },
+      {
+        relationName: 'targetOpportunity',
+        territoryFieldName: 'projectCountry',
+      },
+    ],
+  },
+} as const satisfies Record<string, ControlitRelationReadFilterSpec>;
 
 const READ_METHODS = new Set<string>([
   CommonQueryNames.FIND_MANY,
@@ -92,8 +129,9 @@ export class ControlitTerritoryAccessService {
     payload: ResolverArgs,
   ): Promise<ResolverArgs> {
     const territoryFieldName = this.getTerritoryFieldName(objectName);
+    const relationReadFilterSpecs = this.getRelationReadFilterSpecs(objectName);
 
-    if (!territoryFieldName) {
+    if (!territoryFieldName && !relationReadFilterSpecs) {
       return payload;
     }
 
@@ -104,7 +142,23 @@ export class ControlitTerritoryAccessService {
     }
 
     if (READ_METHODS.has(methodName)) {
+      if (relationReadFilterSpecs) {
+        return this.withRelationReadFilter(
+          payload,
+          relationReadFilterSpecs,
+          scope,
+        );
+      }
+
+      if (!territoryFieldName) {
+        return payload;
+      }
+
       return this.withTerritoryFilter(payload, territoryFieldName, scope);
+    }
+
+    if (!territoryFieldName) {
+      return payload;
     }
 
     if (
@@ -165,6 +219,16 @@ export class ControlitTerritoryAccessService {
     return objectName in CONTROLIT_TERRITORY_FIELD_BY_OBJECT
       ? CONTROLIT_TERRITORY_FIELD_BY_OBJECT[
           objectName as ControlitRestrictedObjectName
+        ]
+      : null;
+  }
+
+  private getRelationReadFilterSpecs(
+    objectName: string,
+  ): ControlitRelationReadFilterSpec | null {
+    return objectName in CONTROLIT_RELATION_READ_FILTERS_BY_OBJECT
+      ? CONTROLIT_RELATION_READ_FILTERS_BY_OBJECT[
+          objectName as keyof typeof CONTROLIT_RELATION_READ_FILTERS_BY_OBJECT
         ]
       : null;
   }
@@ -291,6 +355,49 @@ export class ControlitTerritoryAccessService {
         scope.territories,
       ),
     } as ResolverArgs;
+  }
+
+  private withRelationReadFilter(
+    payload: ResolverArgs,
+    relationReadFilterSpecs: ControlitRelationReadFilterSpec,
+    scope: ControlitTerritoryAccessScope,
+  ): ResolverArgs {
+    const payloadWithFilter = payload as PayloadWithFilter;
+    const scopedFilter =
+      scope.territories.length === 0
+        ? ({ id: { eq: CONTROLIT_NO_RECORD_ID } } as ObjectRecordFilter)
+        : ({
+            and: [
+              this.buildRelationTerritoryFilter(
+                relationReadFilterSpecs.owner,
+                scope,
+              ),
+              {
+                or: relationReadFilterSpecs.targets.map((spec) =>
+                  this.buildRelationTerritoryFilter(spec, scope),
+                ),
+              },
+            ],
+          } as ObjectRecordFilter);
+
+    return {
+      ...payload,
+      filter: mergeObjectFilterWithScopedFilter(
+        payloadWithFilter.filter,
+        scopedFilter,
+      ),
+    } as ResolverArgs;
+  }
+
+  private buildRelationTerritoryFilter(
+    spec: ControlitRelationTerritoryFilterSpec,
+    scope: ControlitTerritoryAccessScope,
+  ): ObjectRecordFilter {
+    return {
+      [spec.relationName]: {
+        [spec.territoryFieldName]: { in: scope.territories },
+      },
+    } as ObjectRecordFilter;
   }
 
   private validateCreateDataOrThrow(

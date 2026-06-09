@@ -242,6 +242,56 @@ class CrmContactImportTests(unittest.TestCase):
         self.assertEqual(person_payload["name"]["firstName"], "Jane")
         self.assertEqual(person_payload["emails"]["primaryEmail"], "jane.manager@yit.fi")
         self.assertEqual(person_payload["phones"]["primaryPhoneNumber"], "+358 123")
+        self.assertEqual(person_payload["personTerritory"], "FINLAND")
+
+    def test_assigns_territory_to_existing_person_updates(self):
+        source_records = [
+            {
+                "source_file": "CRM EXCEL .xlsx",
+                "source_sheet": "UAE CONTACTS ",
+                "source_row": 11,
+                "country": "UAE",
+                "company": "Controlit Gulf",
+                "company_category": "",
+                "company_website": "https://controlit.example",
+                "company_city": "Dubai",
+                "project_types": "",
+                "target_role_to_meet": "",
+                "company_notes": "",
+                "contact_full_name": "Jane Manager",
+                "contact_first_name": "Jane",
+                "contact_last_name": "Manager",
+                "contact_position": "",
+                "contact_email": "jane.manager@controlit.example",
+                "contact_phone": "",
+                "contact_linkedin": "",
+            }
+        ]
+        existing = {
+            "companies": [
+                {
+                    "id": "company-1",
+                    "name": "Controlit Gulf",
+                    "domainName": {"primaryLinkUrl": "https://controlit.example"},
+                    "companyCountry": "UNITED_ARAB_EMIRATES",
+                }
+            ],
+            "people": [
+                {
+                    "id": "person-1",
+                    "name": {"firstName": "Jane", "lastName": "Manager"},
+                    "emails": {"primaryEmail": "jane.manager@controlit.example"},
+                    "personTerritory": None,
+                    "companyId": "company-1",
+                }
+            ],
+            "note_import_keys": set(),
+        }
+
+        plan = build_import_plan(source_records, existing)
+
+        self.assertEqual(len(plan["person_updates"]), 1)
+        self.assertEqual(plan["person_updates"][0]["data"]["personTerritory"], "UNITED_ARAB_EMIRATES")
 
     def test_adds_country_phone_metadata_for_non_plus_numbers(self):
         source_records = [
@@ -482,6 +532,20 @@ class CrmContactImportTests(unittest.TestCase):
         applied = apply_import_plan(client, plan, existing_state)
 
         self.assertEqual(applied["notes_created"], 1)
+        self.assertIn(
+            (
+                "POST",
+                "/rest/notes",
+                {
+                    "title": "CRM import - Company source notes",
+                    "bodyV2": {
+                        "markdown": plan["company_notes"][0]["body"],
+                    },
+                    "noteTerritory": "ESTONIA",
+                },
+            ),
+            client.calls,
+        )
         self.assertIn(("POST", "/rest/noteTargets", {"noteId": "note-1", "companyId": "company-1"}), client.calls)
 
     def test_updates_existing_no_email_person_when_source_later_has_email(self):
@@ -541,10 +605,17 @@ class CrmContactImportTests(unittest.TestCase):
         )
 
     def test_uses_rest_rich_text_payload_for_notes(self):
-        payload = note_payload({"title": "CRM import - Generic contact", "body": "Generic contact\n[CRM_IMPORT:x:y]"})
+        payload = note_payload(
+            {
+                "title": "CRM import - Generic contact",
+                "body": "Generic contact\n[CRM_IMPORT:x:y]",
+                "territory": "ESTONIA",
+            }
+        )
 
         self.assertEqual(payload["title"], "CRM import - Generic contact")
         self.assertEqual(payload["bodyV2"]["markdown"], "Generic contact\n[CRM_IMPORT:x:y]")
+        self.assertEqual(payload["noteTerritory"], "ESTONIA")
         self.assertNotIn("bodyV2Markdown", payload)
 
     def test_metadata_dry_run_handles_missing_fields_before_view_planning(self):

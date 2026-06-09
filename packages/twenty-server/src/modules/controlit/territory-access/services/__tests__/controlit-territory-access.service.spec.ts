@@ -285,6 +285,98 @@ describe('ControlitTerritoryAccessService', () => {
     });
   });
 
+  it('adds territory filters to scoped note target reads', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'noteTarget',
+        CommonQueryNames.FIND_MANY,
+        { filter: { id: { eq: 'note-target-id' } } },
+      ),
+    ).resolves.toEqual({
+      filter: {
+        and: [
+          { id: { eq: 'note-target-id' } },
+          {
+            and: [
+              { note: { noteTerritory: { in: ['FINLAND'] } } },
+              {
+                or: [
+                  { targetCompany: { companyCountry: { in: ['FINLAND'] } } },
+                  { targetPerson: { personTerritory: { in: ['FINLAND'] } } },
+                  {
+                    targetOpportunity: {
+                      projectCountry: { in: ['FINLAND'] },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
+  it('adds territory filters to scoped task target reads', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['ESTONIA', 'LATVIA'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'taskTarget',
+        CommonQueryNames.FIND_MANY,
+        { filter: { id: { eq: 'task-target-id' } } },
+      ),
+    ).resolves.toEqual({
+      filter: {
+        and: [
+          { id: { eq: 'task-target-id' } },
+          {
+            and: [
+              { task: { taskTerritory: { in: ['ESTONIA', 'LATVIA'] } } },
+              {
+                or: [
+                  {
+                    targetCompany: {
+                      companyCountry: { in: ['ESTONIA', 'LATVIA'] },
+                    },
+                  },
+                  {
+                    targetPerson: {
+                      personTerritory: { in: ['ESTONIA', 'LATVIA'] },
+                    },
+                  },
+                  {
+                    targetOpportunity: {
+                      projectCountry: { in: ['ESTONIA', 'LATVIA'] },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
   it('blocks non-branch managers from updating companies', async () => {
     const { service } = setup({
       assignmentRows: [

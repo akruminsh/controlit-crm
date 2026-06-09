@@ -670,6 +670,7 @@ def contact_payload(contact: dict[str, Any], company_id: str | None) -> dict[str
             "primaryLinkLabel": linkedin,
         },
         "companyId": company_id,
+        "personTerritory": country_value(contact.get("country", "")),
     }
     return compact_payload(payload)
 
@@ -764,7 +765,14 @@ def build_import_plan(source_records: list[dict[str, Any]], existing: dict[str, 
             plan["company_creates"].append({"company_key": company_key, "data": desired})
 
         for note_body in company.get("company_notes", []):
-            add_company_note(plan, existing_note_markers, company_key, "Company source notes", note_body)
+            add_company_note(
+                plan,
+                existing_note_markers,
+                company_key,
+                "Company source notes",
+                note_body,
+                country_value(company.get("country", "")),
+            )
 
         for contact in company["contacts"]:
             full_name = clean(contact.get("contact_full_name", ""))
@@ -789,6 +797,7 @@ def build_import_plan(source_records: list[dict[str, Any]], existing: dict[str, 
                         company_key,
                         "Generic contact",
                         "\n".join(generic_lines),
+                        country_value(contact.get("country", "")),
                     )
                 plan["skipped_person_rows"].append(source_line(contact))
                 continue
@@ -800,6 +809,7 @@ def build_import_plan(source_records: list[dict[str, Any]], existing: dict[str, 
                     company_key,
                     "Contact note",
                     f"{full_name}: {contact_note}\n{source_line(contact)}",
+                    country_value(contact.get("country", "")),
                 )
 
             company_id = planned_company_ids.get(company_key)
@@ -857,6 +867,7 @@ def add_company_note(
     company_key: str,
     title: str,
     body: str,
+    territory: str | None,
 ) -> None:
     marker = import_marker("company-note", company_key, body)
     if marker in existing_markers:
@@ -867,6 +878,7 @@ def add_company_note(
             "title": f"CRM import - {title}",
             "body": f"{body}\n\n[{marker}]",
             "marker": marker,
+            "territory": territory,
         }
     )
 
@@ -1264,13 +1276,17 @@ def apply_import_plan(client: CrmClient, plan: dict[str, Any], existing_state: d
     return counts
 
 
-def note_payload(note: dict[str, str]) -> dict[str, Any]:
-    return {
+def note_payload(note: dict[str, Any]) -> dict[str, Any]:
+    payload = {
         "title": note["title"],
         "bodyV2": {
             "markdown": note["body"],
         },
     }
+    territory = country_value(note.get("territory", ""))
+    if territory:
+        payload["noteTerritory"] = territory
+    return payload
 
 
 def summarize_plan(plan: dict[str, Any]) -> dict[str, Any]:

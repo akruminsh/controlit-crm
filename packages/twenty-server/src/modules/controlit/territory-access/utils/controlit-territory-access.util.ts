@@ -18,6 +18,19 @@ type CreatedByOwnershipRecord = {
   } | null;
 };
 
+export const mergeObjectFilterWithScopedFilter = (
+  existingFilter: ObjectRecordFilter | undefined,
+  scopedFilter: ObjectRecordFilter,
+): ObjectRecordFilter => {
+  if (!existingFilter || Object.keys(existingFilter).length === 0) {
+    return scopedFilter;
+  }
+
+  return {
+    and: [existingFilter, scopedFilter],
+  } as ObjectRecordFilter;
+};
+
 export const mergeObjectFilter = (
   existingFilter: ObjectRecordFilter | undefined,
   fieldName: string,
@@ -30,13 +43,7 @@ export const mergeObjectFilter = (
           [fieldName]: { in: territories },
         } as ObjectRecordFilter);
 
-  if (!existingFilter || Object.keys(existingFilter).length === 0) {
-    return territoryFilter;
-  }
-
-  return {
-    and: [existingFilter, territoryFilter],
-  } as ObjectRecordFilter;
+  return mergeObjectFilterWithScopedFilter(existingFilter, territoryFilter);
 };
 
 export const buildTaskManagerOwnershipFilter = (
