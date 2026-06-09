@@ -15,6 +15,7 @@ const ROLE_LABEL = 'Territory Contributor';
 const ROLE_DESCRIPTION =
   'Can view assigned territory data and create/update own Projects and Tasks within assigned territories.';
 const ROLE_ICON = 'IconUserCheck';
+const ROLE_UNIVERSAL_IDENTIFIER = 'f82b25b2-9bbb-4de4-9ebc-88404763f5b0';
 const PILOT_EMAIL = 'ak@marketinghackers.lv';
 
 const { args, isDryRun, skipBackup } = parseCommonArgs();
@@ -48,7 +49,7 @@ async function main() {
 function workspaceScopeSql() {
   return `
     "workspaceScope" AS (
-      SELECT "id"
+      SELECT "id", "workspaceCustomApplicationId"
       FROM "core"."workspace"
       WHERE ${sqlString(config.workspaceId)}::uuid IS NULL
         OR "id" = ${sqlString(config.workspaceId)}::uuid
@@ -110,11 +111,11 @@ function buildDryRunSql() {
     JOIN "core"."user" "user"
       ON "user"."id" = userWorkspace."userId"
       AND LOWER("user"."email") = LOWER(${sqlString(PILOT_EMAIL)})
-    LEFT JOIN "core"."roleTargets" roleTargets
-      ON roleTargets."workspaceId" = workspace."id"
-      AND roleTargets."userWorkspaceId" = userWorkspace."id"
+    LEFT JOIN "core"."roleTarget" roleTarget
+      ON roleTarget."workspaceId" = workspace."id"
+      AND roleTarget."userWorkspaceId" = userWorkspace."id"
     LEFT JOIN "core"."role" role
-      ON role."id" = roleTargets."roleId";
+      ON role."id" = roleTarget."roleId";
   `;
 }
 
@@ -133,15 +134,17 @@ function buildApplySql() {
         LIMIT 1
       ),
       "deletedPilotRoleTargets" AS (
-        DELETE FROM "core"."roleTargets" roleTargets
+        DELETE FROM "core"."roleTarget" roleTarget
         USING "workspaceScope" workspace, "pilotUserWorkspace" pilot
-        WHERE roleTargets."workspaceId" = workspace."id"
-          AND roleTargets."userWorkspaceId" = pilot."id"
-        RETURNING roleTargets."id"
+        WHERE roleTarget."workspaceId" = workspace."id"
+          AND roleTarget."userWorkspaceId" = pilot."id"
+        RETURNING roleTarget."id"
       ),
       "insertedPilotRoleTarget" AS (
-        INSERT INTO "core"."roleTargets" (
+        INSERT INTO "core"."roleTarget" (
           "id",
+          "universalIdentifier",
+          "applicationId",
           "workspaceId",
           "roleId",
           "userWorkspaceId",
@@ -150,12 +153,18 @@ function buildApplySql() {
         )
         SELECT
           uuid_generate_v4(),
+          uuid_generate_v5(
+            uuid_ns_url(),
+            CONCAT(${sqlString(ROLE_UNIVERSAL_IDENTIFIER)}, ':roleTarget:', pilot."id"::text)
+          ),
+          application."id",
           workspace."id",
           role."id",
           pilot."id",
           now(),
           now()
         FROM "workspaceScope" workspace
+        JOIN "applicationScope" application ON true
         JOIN "upsertedRole" role ON true
         JOIN "pilotUserWorkspace" pilot ON true
         RETURNING "id", "userWorkspaceId"
@@ -175,9 +184,16 @@ function buildApplySql() {
   return `
     WITH
       ${workspaceScopeSql()},
+      "applicationScope" AS (
+        SELECT workspace."workspaceCustomApplicationId" AS "id"
+        FROM "workspaceScope" workspace
+        WHERE workspace."workspaceCustomApplicationId" IS NOT NULL
+      ),
       "upsertedRole" AS (
         INSERT INTO "core"."role" (
           "id",
+          "universalIdentifier",
+          "applicationId",
           "label",
           "description",
           "icon",
@@ -197,6 +213,8 @@ function buildApplySql() {
         )
         SELECT
           uuid_generate_v4(),
+          ${sqlString(ROLE_UNIVERSAL_IDENTIFIER)}::uuid,
+          application."id",
           ${sqlString(ROLE_LABEL)},
           ${sqlString(ROLE_DESCRIPTION)},
           ${sqlString(ROLE_ICON)},
@@ -214,8 +232,11 @@ function buildApplySql() {
           now(),
           now()
         FROM "workspaceScope" workspace
+        JOIN "applicationScope" application ON true
         ON CONFLICT ("label", "workspaceId")
         DO UPDATE SET
+          "universalIdentifier" = EXCLUDED."universalIdentifier",
+          "applicationId" = EXCLUDED."applicationId",
           "description" = EXCLUDED."description",
           "icon" = EXCLUDED."icon",
           "canUpdateAllSettings" = EXCLUDED."canUpdateAllSettings",
@@ -234,6 +255,8 @@ function buildApplySql() {
       "upsertedObjectPermissions" AS (
         INSERT INTO "core"."objectPermission" (
           "id",
+          "universalIdentifier",
+          "applicationId",
           "roleId",
           "objectMetadataId",
           "canReadObjectRecords",
@@ -246,6 +269,11 @@ function buildApplySql() {
         )
         SELECT
           uuid_generate_v4(),
+          uuid_generate_v5(
+            uuid_ns_url(),
+            CONCAT(${sqlString(ROLE_UNIVERSAL_IDENTIFIER)}, ':objectPermission:', object."nameSingular")
+          ),
+          application."id",
           role."id",
           object."id",
           true,
@@ -256,11 +284,14 @@ function buildApplySql() {
           now(),
           now()
         FROM "upsertedRole" role
+        JOIN "applicationScope" application ON true
         JOIN "core"."objectMetadata" object
           ON object."workspaceId" = role."workspaceId"
           AND object."nameSingular" IN ('opportunity', 'task')
         ON CONFLICT ("objectMetadataId", "roleId")
         DO UPDATE SET
+          "universalIdentifier" = EXCLUDED."universalIdentifier",
+          "applicationId" = EXCLUDED."applicationId",
           "canReadObjectRecords" = EXCLUDED."canReadObjectRecords",
           "canUpdateObjectRecords" = EXCLUDED."canUpdateObjectRecords",
           "canSoftDeleteObjectRecords" = EXCLUDED."canSoftDeleteObjectRecords",

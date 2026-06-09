@@ -255,11 +255,11 @@ export class ControlitTerritoryAccessService {
     const rows = await this.coreDataSource.query<ControlitRoleBypassRow[]>(
       `
         SELECT role."canUpdateAllSettings"
-        FROM "core"."roleTargets" roleTargets
+        FROM "core"."roleTarget" roleTarget
         INNER JOIN "core"."role" role
-          ON role.id = roleTargets."roleId"
-        WHERE roleTargets."workspaceId" = $1
-          AND roleTargets."userWorkspaceId" = $2
+          ON role.id = roleTarget."roleId"
+        WHERE roleTarget."workspaceId" = $1
+          AND roleTarget."userWorkspaceId" = $2
       `,
       [workspaceId, userWorkspaceId],
     );

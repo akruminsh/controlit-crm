@@ -40,6 +40,10 @@ describe('ControlitTerritoryAccessService', () => {
     const coreDataSource = {
       query: jest.fn((query: string) => {
         if (query.includes('"roleTargets"')) {
+          throw new Error('Unexpected legacy roleTargets table query');
+        }
+
+        if (query.includes('"roleTarget"')) {
           return Promise.resolve([{ canUpdateAllSettings: isAdmin }]);
         }
 
@@ -97,6 +101,33 @@ describe('ControlitTerritoryAccessService', () => {
       ),
     ).resolves.toBe(payload);
     expect(coreDataSource.query).not.toHaveBeenCalled();
+  });
+
+  it('checks admin bypass against the v2.11 singular roleTarget table', async () => {
+    const { service, coreDataSource } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await service.applyPreQueryHook(
+      authContext,
+      'company',
+      CommonQueryNames.FIND_MANY,
+      { filter: { name: { ilike: '%YIT%' } } },
+    );
+
+    expect(coreDataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining('"core"."roleTarget"'),
+      ['workspace-id', 'user-workspace-id'],
+    );
+    expect(coreDataSource.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('"core"."roleTargets"'),
+      expect.anything(),
+    );
   });
 
   it('fails closed for scoped reads when a limited user has no territory assignment yet', async () => {
