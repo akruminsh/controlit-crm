@@ -8,11 +8,14 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from crm_contact_import import (  # noqa: E402
     COUNTRY_OPTIONS,
+    apply_import_plan,
     build_import_plan,
+    contact_payload,
     country_value,
     ensure_company_metadata,
     map_company_type,
     note_payload,
+    normalize_email,
     normalize_company_key,
     normalize_website_for_storage,
     source_company_payload,
@@ -34,6 +37,28 @@ class CrmContactImportTests(unittest.TestCase):
     def test_drops_non_url_like_website_values(self):
         self.assertEqual(normalize_website_for_storage("International"), "")
         self.assertEqual(normalize_website_for_storage("www.yit.fi/en"), "https://www.yit.fi/en")
+
+    def test_normalizes_email_cells_with_trailing_separators(self):
+        self.assertEqual(normalize_email("alice@example.com;"), "alice@example.com")
+        self.assertEqual(normalize_email("alice@example.com,"), "alice@example.com")
+        self.assertEqual(normalize_email("<alice@example.com>;"), "alice@example.com")
+        self.assertEqual(normalize_email("alice@example.com; bob@example.com"), "alice@example.com")
+        self.assertEqual(normalize_email("alice@example.com,bob@example.com"), "alice@example.com")
+
+        payload = contact_payload(
+            {
+                "contact_first_name": "Alice",
+                "contact_last_name": "Example",
+                "contact_email": "alice@example.com;",
+                "contact_phone": "",
+                "contact_position": "",
+                "contact_linkedin": "",
+                "country": "Finland",
+            },
+            company_id=None,
+        )
+
+        self.assertEqual(payload["emails"]["primaryEmail"], "alice@example.com")
 
     def test_maps_all_canonical_country_values(self):
         for label, value, _color in COUNTRY_OPTIONS:
@@ -389,6 +414,75 @@ class CrmContactImportTests(unittest.TestCase):
         self.assertEqual(plan["source_company_count"], 1)
         self.assertEqual(len(plan["company_creates"]), 1)
         self.assertEqual(len(plan["person_creates"]), 2)
+
+    def test_applies_notes_for_domain_matched_company_with_no_update(self):
+        source_records = [
+            {
+                "source_file": "CRM EXCEL .xlsx",
+                "source_sheet": "ESTONIA CONTACTS ",
+                "source_row": 4,
+                "country": "Estonia",
+                "company": "Harmet Modular",
+                "company_category": "",
+                "company_website": "www.harmet.ee",
+                "company_city": "",
+                "project_types": "",
+                "target_role_to_meet": "",
+                "company_notes": "Existing customer note",
+                "contact_full_name": "",
+                "contact_first_name": "",
+                "contact_last_name": "",
+                "contact_position": "",
+                "contact_email": "",
+                "contact_phone": "",
+                "contact_linkedin": "",
+            }
+        ]
+        existing_state = {
+            "companies": [
+                {
+                    "id": "company-1",
+                    "name": "Harmet AS",
+                    "domainName": {
+                        "primaryLinkUrl": "https://www.harmet.ee",
+                        "primaryLinkLabel": "harmet.ee",
+                    },
+                    "address": {"addressCountry": "Estonia"},
+                    "companyCountry": "ESTONIA",
+                    "companyCategoryRaw": "",
+                    "projectTypes": "",
+                    "targetPersonRole": "",
+                    "companyType": None,
+                }
+            ],
+            "people": [],
+            "note_import_keys": set(),
+        }
+
+        plan = build_import_plan(source_records, existing_state)
+
+        self.assertEqual(plan["company_ids_by_key"], {"harmet modular": "company-1"})
+        self.assertEqual(plan["company_creates"], [])
+        self.assertEqual(plan["company_updates"], [])
+        self.assertEqual(len(plan["company_notes"]), 1)
+
+        class FakeClient:
+            def __init__(self):
+                self.calls = []
+
+            def rest(self, method, path, body=None):
+                self.calls.append((method, path, body))
+                if method == "POST" and path == "/rest/notes":
+                    return {"data": {"createNote": {"id": "note-1"}}}
+                if method == "POST" and path == "/rest/noteTargets":
+                    return {"data": {"createNoteTarget": {"id": "note-target-1"}}}
+                raise AssertionError(f"unexpected REST call: {method} {path}")
+
+        client = FakeClient()
+        applied = apply_import_plan(client, plan, existing_state)
+
+        self.assertEqual(applied["notes_created"], 1)
+        self.assertIn(("POST", "/rest/noteTargets", {"noteId": "note-1", "companyId": "company-1"}), client.calls)
 
     def test_updates_existing_no_email_person_when_source_later_has_email(self):
         base_record = {

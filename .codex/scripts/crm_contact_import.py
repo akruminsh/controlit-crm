@@ -67,7 +67,7 @@ COUNTRY_VALUE_ALIASES = {
 }
 PILOT_COMPANY_KEYS = {"yit", "sensor innovation", "dayone"}
 
-EMAIL_RE = re.compile(r"[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+")
+EMAIL_RE = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE)
 COMPANY_SUFFIX_RE = re.compile(
     r"\b(oy|as|inc|ltd|llc|ab|group|gmbh|corp|corporation)\.?$",
     re.IGNORECASE,
@@ -732,6 +732,7 @@ def build_import_plan(source_records: list[dict[str, Any]], existing: dict[str, 
         "skipped_company_rows": [],
         "source_duplicate_emails": {},
         "source_company_count": len(source_companies),
+        "company_ids_by_key": {},
     }
     planned_company_ids: dict[str, str | None] = {}
     planned_person_aliases: dict[str, dict[str, Any]] = {}
@@ -754,6 +755,7 @@ def build_import_plan(source_records: list[dict[str, Any]], existing: dict[str, 
         existing_company = (by_domain.get(domain_key) if domain_key else None) or by_name.get(company_key)
         if existing_company:
             planned_company_ids[company_key] = existing_company["id"]
+            plan["company_ids_by_key"][company_key] = existing_company["id"]
             update = fill_only_update(existing_company, desired)
             if update:
                 plan["company_updates"].append({"id": existing_company["id"], "company_key": company_key, "data": update})
@@ -1215,11 +1217,11 @@ def apply_import_plan(client: CrmClient, plan: dict[str, Any], existing_state: d
         "people_updated": 0,
         "notes_created": 0,
     }
-    company_id_by_key = {}
+    company_id_by_key = {**plan.get("company_ids_by_key", {})}
     for company in existing_state["companies"]:
         key = normalize_company_key(company.get("name", ""))
         if key:
-            company_id_by_key[key] = company["id"]
+            company_id_by_key.setdefault(key, company["id"])
 
     for action in plan["company_creates"]:
         created = client.rest("POST", "/rest/companies", action["data"])["data"]["createCompany"]
