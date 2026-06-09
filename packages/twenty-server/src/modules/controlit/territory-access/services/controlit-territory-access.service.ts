@@ -225,7 +225,7 @@ export class ControlitTerritoryAccessService {
       );
     } catch (error) {
       if (this.isMissingTerritoryAccessTableError(error)) {
-        return null;
+        return this.buildFailClosedScope(workspaceMemberId);
       }
 
       throw error;
@@ -234,13 +234,23 @@ export class ControlitTerritoryAccessService {
     const row = rows[0];
 
     if (!row) {
-      return null;
+      return this.buildFailClosedScope(workspaceMemberId);
     }
 
     return {
       workspaceMemberId,
       territories: this.normalizeTerritories(row.territories),
       canManageTerritory: row.canManageTerritory,
+    };
+  }
+
+  private buildFailClosedScope(
+    workspaceMemberId: string,
+  ): ControlitTerritoryAccessScope {
+    return {
+      workspaceMemberId,
+      territories: [],
+      canManageTerritory: false,
     };
   }
 
@@ -311,10 +321,7 @@ export class ControlitTerritoryAccessService {
       this.throwPermissionDenied();
     }
 
-    if (
-      !USER_OWNED_MUTATION_OBJECTS.has(objectName) &&
-      !scope.canManageTerritory
-    ) {
+    if (!USER_OWNED_MUTATION_OBJECTS.has(objectName)) {
       this.throwPermissionDenied();
     }
 
@@ -322,23 +329,13 @@ export class ControlitTerritoryAccessService {
   }
 
   private validateBulkMutationOrThrow(
-    objectName: string,
-    territoryFieldName: string,
-    scope: ControlitTerritoryAccessScope,
-    methodName: string,
-    payload: PayloadWithFilter & PayloadWithData,
+    _objectName: string,
+    _territoryFieldName: string,
+    _scope: ControlitTerritoryAccessScope,
+    _methodName: string,
+    _payload: PayloadWithFilter & PayloadWithData,
   ) {
-    if (methodName === CommonQueryNames.UPDATE_MANY) {
-      this.validateTerritoryUpdateDataOrThrow(
-        payload.data,
-        territoryFieldName,
-        scope,
-      );
-    }
-
-    if (!scope.canManageTerritory) {
-      this.throwPermissionDenied();
-    }
+    this.throwPermissionDenied();
   }
 
   private async validateSingleRecordMutationOrThrow(
@@ -353,10 +350,7 @@ export class ControlitTerritoryAccessService {
       this.throwPermissionDenied();
     }
 
-    if (
-      methodName !== CommonQueryNames.UPDATE_ONE &&
-      !scope.canManageTerritory
-    ) {
+    if (methodName !== CommonQueryNames.UPDATE_ONE) {
       this.throwPermissionDenied();
     }
 
@@ -368,10 +362,7 @@ export class ControlitTerritoryAccessService {
       );
     }
 
-    if (
-      !USER_OWNED_MUTATION_OBJECTS.has(objectName) &&
-      !scope.canManageTerritory
-    ) {
+    if (!USER_OWNED_MUTATION_OBJECTS.has(objectName)) {
       this.throwPermissionDenied();
     }
 
@@ -385,7 +376,6 @@ export class ControlitTerritoryAccessService {
 
     if (
       objectName === 'task' &&
-      !scope.canManageTerritory &&
       !isTaskOwnedByWorkspaceMember(record, scope.workspaceMemberId)
     ) {
       this.throwPermissionDenied();
@@ -393,7 +383,6 @@ export class ControlitTerritoryAccessService {
 
     if (
       objectName === 'opportunity' &&
-      !scope.canManageTerritory &&
       !isRecordCreatedByWorkspaceMember(record, scope.workspaceMemberId)
     ) {
       this.throwPermissionDenied();

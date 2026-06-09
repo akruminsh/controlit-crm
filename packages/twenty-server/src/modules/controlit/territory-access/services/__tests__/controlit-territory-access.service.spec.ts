@@ -19,6 +19,12 @@ const apiKeyAuthContext = {
   apiKey: { id: 'api-key-id' },
 } as unknown as WorkspaceAuthContext;
 
+const expectPermissionDenied = async (promise: Promise<unknown>) => {
+  await expect(promise).rejects.toMatchObject({
+    code: PermissionsExceptionCode.PERMISSION_DENIED,
+  } satisfies Partial<PermissionsException>);
+};
+
 describe('ControlitTerritoryAccessService', () => {
   const setup = ({
     isAdmin = false,
@@ -93,18 +99,24 @@ describe('ControlitTerritoryAccessService', () => {
     expect(coreDataSource.query).not.toHaveBeenCalled();
   });
 
-  it('does not change payloads when a user has no territory assignment yet', async () => {
+  it('fails closed for scoped reads when a limited user has no territory assignment yet', async () => {
     const { service } = setup();
-    const payload = { filter: { name: { ilike: '%YIT%' } } };
 
     await expect(
       service.applyPreQueryHook(
         authContext,
         'company',
         CommonQueryNames.FIND_MANY,
-        payload,
+        { filter: { name: { ilike: '%YIT%' } } },
       ),
-    ).resolves.toBe(payload);
+    ).resolves.toEqual({
+      filter: {
+        and: [
+          { name: { ilike: '%YIT%' } },
+          { id: { eq: '00000000-0000-0000-0000-000000000000' } },
+        ],
+      },
+    });
   });
 
   it('does not change payloads for admin roles', async () => {
@@ -129,20 +141,26 @@ describe('ControlitTerritoryAccessService', () => {
     ).resolves.toBe(payload);
   });
 
-  it('does not change payloads when the assignment table is not migrated yet', async () => {
+  it('fails closed for scoped reads when the assignment table is not migrated yet', async () => {
     const { service } = setup({
       assignmentError: { code: '42P01' },
     });
-    const payload = { filter: { name: { ilike: '%YIT%' } } };
 
     await expect(
       service.applyPreQueryHook(
         authContext,
         'company',
         CommonQueryNames.FIND_MANY,
-        payload,
+        { filter: { name: { ilike: '%YIT%' } } },
       ),
-    ).resolves.toBe(payload);
+    ).resolves.toEqual({
+      filter: {
+        and: [
+          { name: { ilike: '%YIT%' } },
+          { id: { eq: '00000000-0000-0000-0000-000000000000' } },
+        ],
+      },
+    });
   });
 
   it('adds territory filters to scoped company reads', async () => {
@@ -246,16 +264,14 @@ describe('ControlitTerritoryAccessService', () => {
       ],
     });
 
-    await expect(
+    await expectPermissionDenied(
       service.applyPreQueryHook(
         authContext,
         'company',
         CommonQueryNames.UPDATE_ONE,
         { id: 'company-id', data: { name: 'YIT' } },
       ),
-    ).rejects.toMatchObject({
-      code: PermissionsExceptionCode.PERMISSION_DENIED,
-    } satisfies Partial<PermissionsException>);
+    );
   });
 
   it('allows managers to create opportunities inside their territories', async () => {
@@ -294,7 +310,7 @@ describe('ControlitTerritoryAccessService', () => {
       ],
     });
 
-    await expect(
+    await expectPermissionDenied(
       service.applyPreQueryHook(
         authContext,
         'opportunity',
@@ -306,9 +322,7 @@ describe('ControlitTerritoryAccessService', () => {
           },
         },
       ),
-    ).rejects.toMatchObject({
-      code: PermissionsExceptionCode.PERMISSION_DENIED,
-    } satisfies Partial<PermissionsException>);
+    );
   });
 
   it('allows managers to update opportunities created by them inside their territories', async () => {
@@ -355,19 +369,17 @@ describe('ControlitTerritoryAccessService', () => {
       },
     });
 
-    await expect(
+    await expectPermissionDenied(
       service.applyPreQueryHook(
         authContext,
         'opportunity',
         CommonQueryNames.UPDATE_ONE,
         { id: 'opportunity-id', data: { name: 'Updated roof project' } },
       ),
-    ).rejects.toMatchObject({
-      code: PermissionsExceptionCode.PERMISSION_DENIED,
-    } satisfies Partial<PermissionsException>);
+    );
   });
 
-  it('blocks branch managers from updating records outside their territories', async () => {
+  it('blocks canManageTerritory limited users from updating companies inside their territories', async () => {
     const { service } = setup({
       assignmentRows: [
         {
@@ -377,20 +389,18 @@ describe('ControlitTerritoryAccessService', () => {
       ],
       record: {
         id: 'company-id',
-        companyCountry: 'ESTONIA',
+        companyCountry: 'FINLAND',
       },
     });
 
-    await expect(
+    await expectPermissionDenied(
       service.applyPreQueryHook(
         authContext,
         'company',
         CommonQueryNames.UPDATE_ONE,
         { id: 'company-id', data: { name: 'YIT' } },
       ),
-    ).rejects.toMatchObject({
-      code: PermissionsExceptionCode.PERMISSION_DENIED,
-    } satisfies Partial<PermissionsException>);
+    );
   });
 
   it('allows managers to update tasks assigned to them inside their territory', async () => {
@@ -420,7 +430,7 @@ describe('ControlitTerritoryAccessService', () => {
     ).resolves.toBe(payload);
   });
 
-  it('allows branch managers to soft-delete tasks inside their territories', async () => {
+  it('blocks canManageTerritory limited users from soft-deleting tasks inside their territories', async () => {
     const { service } = setup({
       assignmentRows: [
         {
@@ -437,14 +447,14 @@ describe('ControlitTerritoryAccessService', () => {
     });
     const payload = { id: 'task-id' };
 
-    await expect(
+    await expectPermissionDenied(
       service.applyPreQueryHook(
         authContext,
         'task',
         CommonQueryNames.DELETE_ONE,
         payload,
       ),
-    ).resolves.toBe(payload);
+    );
   });
 
   it('blocks managers from updating tasks assigned to someone else', async () => {
@@ -463,16 +473,14 @@ describe('ControlitTerritoryAccessService', () => {
       },
     });
 
-    await expect(
+    await expectPermissionDenied(
       service.applyPreQueryHook(
         authContext,
         'task',
         CommonQueryNames.UPDATE_ONE,
         { id: 'task-id', data: { title: 'Call customer' } },
       ),
-    ).rejects.toMatchObject({
-      code: PermissionsExceptionCode.PERMISSION_DENIED,
-    } satisfies Partial<PermissionsException>);
+    );
   });
 
   it('blocks branch managers from updating notes outside their territories', async () => {
@@ -489,15 +497,111 @@ describe('ControlitTerritoryAccessService', () => {
       },
     });
 
-    await expect(
+    await expectPermissionDenied(
       service.applyPreQueryHook(
         authContext,
         'note',
         CommonQueryNames.UPDATE_ONE,
         { id: 'note-id', data: { title: 'Private note' } },
       ),
-    ).rejects.toMatchObject({
-      code: PermissionsExceptionCode.PERMISSION_DENIED,
-    } satisfies Partial<PermissionsException>);
+    );
   });
+
+  it.each([
+    ['company', 'companyCountry'],
+    ['person', 'personTerritory'],
+    ['note', 'noteTerritory'],
+  ])(
+    'blocks canManageTerritory limited users from creating %s records',
+    async (objectName, territoryFieldName) => {
+      const { service } = setup({
+        assignmentRows: [
+          {
+            territories: ['FINLAND'],
+            canManageTerritory: true,
+          },
+        ],
+      });
+
+      await expectPermissionDenied(
+        service.applyPreQueryHook(
+          authContext,
+          objectName,
+          CommonQueryNames.CREATE_ONE,
+          {
+            data: {
+              name: 'Restricted record',
+              [territoryFieldName]: 'FINLAND',
+            },
+          },
+        ),
+      );
+    },
+  );
+
+  it.each([
+    ['company', 'companyCountry'],
+    ['person', 'personTerritory'],
+    ['note', 'noteTerritory'],
+  ])(
+    'blocks canManageTerritory limited users from updating %s records',
+    async (objectName, territoryFieldName) => {
+      const { service } = setup({
+        assignmentRows: [
+          {
+            territories: ['FINLAND'],
+            canManageTerritory: true,
+          },
+        ],
+        record: {
+          id: `${objectName}-id`,
+          [territoryFieldName]: 'FINLAND',
+        },
+      });
+
+      await expectPermissionDenied(
+        service.applyPreQueryHook(
+          authContext,
+          objectName,
+          CommonQueryNames.UPDATE_ONE,
+          { id: `${objectName}-id`, data: { name: 'Restricted update' } },
+        ),
+      );
+    },
+  );
+
+  it.each([
+    CommonQueryNames.DELETE_ONE,
+    CommonQueryNames.RESTORE_ONE,
+    CommonQueryNames.DESTROY_ONE,
+    CommonQueryNames.DELETE_MANY,
+    CommonQueryNames.RESTORE_MANY,
+    CommonQueryNames.UPDATE_MANY,
+  ])(
+    'blocks canManageTerritory limited users from %s mutations',
+    async (methodName) => {
+      const { service } = setup({
+        assignmentRows: [
+          {
+            territories: ['FINLAND'],
+            canManageTerritory: true,
+          },
+        ],
+        record: {
+          id: 'task-id',
+          taskTerritory: 'FINLAND',
+          assigneeId: 'member-id',
+          createdBy: { workspaceMemberId: 'member-id' },
+        },
+      });
+
+      await expectPermissionDenied(
+        service.applyPreQueryHook(authContext, 'task', methodName, {
+          id: 'task-id',
+          filter: { taskTerritory: { in: ['FINLAND'] } },
+          data: { title: 'Bulk update' },
+        }),
+      );
+    },
+  );
 });
