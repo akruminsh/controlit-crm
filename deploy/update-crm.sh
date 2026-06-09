@@ -72,10 +72,13 @@ wait_for_server_health() {
           echo "Server is healthy."
           return 0
           ;;
-        unhealthy | exited | dead)
+        exited | dead)
           echo "ERROR: Server reached terminal state: ${health_status}." >&2
           print_status_and_logs
           return 1
+          ;;
+        unhealthy)
+          echo "Waiting for server health: unhealthy..."
           ;;
         *)
           echo "Waiting for server health: ${health_status:-unknown}..."
