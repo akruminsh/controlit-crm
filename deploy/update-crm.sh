@@ -14,6 +14,13 @@ compose() {
   docker compose -f "${COMPOSE_FILE}" "$@"
 }
 
+run_upgrade_command() {
+  compose run --rm -T \
+    -e DISABLE_DB_MIGRATIONS=true \
+    -e DISABLE_CRON_JOBS_REGISTRATION=true \
+    server yarn command:prod "$@"
+}
+
 read_env_value() {
   local key="$1"
   local line
@@ -109,8 +116,23 @@ validate_database_password
 echo "Pulling latest Controlit CRM server and worker images..."
 compose pull server worker
 
-echo "Stopping worker before rollout..."
-compose stop worker
+echo "Ensuring database and Redis are running for the upgrade..."
+compose up -d db redis
+
+echo "Stopping app services before explicit upgrade..."
+compose stop worker server
+
+echo "Flushing cache before upgrade..."
+run_upgrade_command cache:flush
+
+echo "Running upgrade dry run..."
+run_upgrade_command upgrade --dry-run
+
+echo "Applying upgrade..."
+run_upgrade_command upgrade
+
+echo "Flushing cache after upgrade..."
+run_upgrade_command cache:flush
 
 echo "Starting server..."
 compose up -d server
