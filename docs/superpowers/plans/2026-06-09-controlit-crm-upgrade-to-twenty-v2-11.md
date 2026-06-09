@@ -671,6 +671,32 @@ export CANDIDATE_SHA="$(git rev-parse HEAD)"
 ssh controlit-crm-vps 'cd /opt/controlit-crm-staging && perl -0pi -e "s/name: controlit-crm/name: controlit-crm-staging/" docker-compose.yml && perl -0pi -e "s#ghcr\.io/akruminsh/controlit-crm:(latest|[0-9a-f]{40})#ghcr.io/akruminsh/controlit-crm:'"$CANDIDATE_SHA"'#g" docker-compose.yml && perl -0pi -e "s#127\.0\.0\.1:3000:3000#127.0.0.1:3001:3000#g" docker-compose.yml && perl -0pi -e "s#SERVER_URL: https://crm\.controlitfactory\.eu#SERVER_URL: http://127.0.0.1:3001#g" docker-compose.yml'
 ```
 
+Then create a staging-only override:
+
+```bash
+ssh controlit-crm-vps 'cat > /opt/controlit-crm-staging/docker-compose.override.yml <<'"'"'EOF'"'"'
+services:
+  server:
+    environment:
+      DISABLE_DB_MIGRATIONS: "true"
+      DISABLE_CRON_JOBS_REGISTRATION: "true"
+      MESSAGING_PROVIDER_GMAIL_ENABLED: "false"
+      CALENDAR_PROVIDER_GOOGLE_ENABLED: "false"
+      MESSAGING_PROVIDER_MICROSOFT_ENABLED: "false"
+      CALENDAR_PROVIDER_MICROSOFT_ENABLED: "false"
+      EMAIL_DRIVER: "logger"
+  worker:
+    environment:
+      DISABLE_DB_MIGRATIONS: "true"
+      DISABLE_CRON_JOBS_REGISTRATION: "true"
+      MESSAGING_PROVIDER_GMAIL_ENABLED: "false"
+      CALENDAR_PROVIDER_GOOGLE_ENABLED: "false"
+      MESSAGING_PROVIDER_MICROSOFT_ENABLED: "false"
+      CALENDAR_PROVIDER_MICROSOFT_ENABLED: "false"
+      EMAIL_DRIVER: "logger"
+EOF'
+```
+
 Expected:
 - Staging project name is different from production.
 - Staging server port is `3001`.
@@ -704,7 +730,7 @@ On VPS:
 ```bash
 export CANDIDATE_SHA="$(git rev-parse HEAD)"
 scp deploy/update-crm.sh controlit-crm-vps:/opt/controlit-crm-staging/update-crm.sh
-ssh controlit-crm-vps "chmod +x /opt/controlit-crm-staging/update-crm.sh && cd /opt/controlit-crm-staging && DEPLOY_DIR=/opt/controlit-crm-staging COMPOSE_PROJECT_NAME=controlit-crm-staging COMPOSE_FILE=docker-compose.yml COMPOSE_OVERRIDE_FILE=docker-compose.override.yml HEALTH_TIMEOUT_SECONDS=300 ./update-crm.sh"
+ssh controlit-crm-vps "chmod +x /opt/controlit-crm-staging/update-crm.sh && cd /opt/controlit-crm-staging && DEPLOY_DIR=/opt/controlit-crm-staging COMPOSE_PROJECT_NAME=controlit-crm-staging COMPOSE_FILE=docker-compose.yml COMPOSE_OVERRIDE_FILE=docker-compose.override.yml TAG=$CANDIDATE_SHA HEALTH_TIMEOUT_SECONDS=300 ./update-crm.sh"
 ```
 
 Expected:
@@ -713,7 +739,7 @@ Expected:
 - Logs show cron registration disabled in staging.
 - Staging server becomes healthy.
 
-- [ ] **Step 4: Check staging health**
+- [ ] **Step 2: Check staging health**
 
 On local machine:
 
@@ -738,8 +764,8 @@ Expected:
 On VPS:
 
 ```bash
-ssh controlit-crm-vps 'cd /opt/controlit-crm-staging && docker compose exec -T db psql -U "$PG_DATABASE_USER" -d default -c "select count(*) as territory_access_rows from core.\"controlitTerritoryAccess\";"'
-ssh controlit-crm-vps 'cd /opt/controlit-crm-staging && docker compose exec -T db psql -U "$PG_DATABASE_USER" -d default -c "select email, \"displayName\" from core.\"user\" order by email;"'
+ssh controlit-crm-vps 'cd /opt/controlit-crm-staging && COMPOSE_PROJECT_NAME=controlit-crm-staging docker compose exec -T db sh -c '\''psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select count(*) as territory_access_rows from core.\"controlitTerritoryAccess\";"'\'''
+ssh controlit-crm-vps 'cd /opt/controlit-crm-staging && COMPOSE_PROJECT_NAME=controlit-crm-staging docker compose exec -T db sh -c '\''psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select email, \"displayName\" from core.\"user\" order by email;"'\'''
 ```
 
 Expected:
@@ -751,9 +777,9 @@ Expected:
 Run from local upgrade worktree with staging URL configured:
 
 ```bash
-CRM_BASE_URL=http://localhost:3100 node .codex/scripts/setup-controlit-territory-metadata.mjs --dry-run
-CRM_BASE_URL=http://localhost:3100 node .codex/scripts/setup-controlit-territory-assignments.mjs --dry-run
-CRM_BASE_URL=http://localhost:3100 node .codex/scripts/setup-controlit-territory-contributor-role-db.mjs --dry-run --assign-pilot
+CRM_BASE_URL=http://localhost:3001 node .codex/scripts/setup-controlit-territory-metadata.mjs --dry-run
+CRM_BASE_URL=http://localhost:3001 node .codex/scripts/setup-controlit-territory-assignments.mjs --dry-run
+CRM_BASE_URL=http://localhost:3001 node .codex/scripts/setup-controlit-territory-contributor-role-db.mjs --dry-run --assign-pilot
 ```
 
 Expected:
@@ -766,13 +792,13 @@ Expected:
 Open staging URL through browser tunnel or direct port if available:
 
 ```bash
-ssh -L 3100:localhost:3100 controlit-crm-vps
+ssh -L 3001:localhost:3001 controlit-crm-vps
 ```
 
 Then open:
 
 ```text
-http://localhost:3100
+http://localhost:3001
 ```
 
 Expected:

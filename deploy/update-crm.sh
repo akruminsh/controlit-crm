@@ -115,6 +115,12 @@ validate_image_tags() {
   fi
 
   while IFS= read -r image; do
+    if [[ "${image}" == "ghcr.io/akruminsh/controlit-crm" ]]; then
+      echo "ERROR: Refusing to deploy ${image}; Docker would treat it as latest." >&2
+      echo "Set TAG to the immutable 40-character Git SHA image tag before running this script." >&2
+      exit 1
+    fi
+
     if [[ "${image}" =~ ^ghcr\.io/akruminsh/controlit-crm:(.+)$ ]]; then
       local tag="${BASH_REMATCH[1]}"
 
