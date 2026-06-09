@@ -44,7 +44,7 @@ run_database_migration() {
   compose run --rm -T \
     -e DISABLE_DB_MIGRATIONS=true \
     -e DISABLE_CRON_JOBS_REGISTRATION=true \
-    server yarn database:migrate:prod --force
+    server yarn database:migrate:prod --force --include-slow
 }
 
 read_env_value() {
