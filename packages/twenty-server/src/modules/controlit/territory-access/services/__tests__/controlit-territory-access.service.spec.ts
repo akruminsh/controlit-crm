@@ -451,6 +451,8 @@ describe('ControlitTerritoryAccessService', () => {
                   projectCountry: { in: ['FINLAND'] },
                 },
               },
+              { targetNote: { noteTerritory: { in: ['FINLAND'] } } },
+              { targetTask: { taskTerritory: { in: ['FINLAND'] } } },
             ],
           },
         ],
@@ -494,6 +496,16 @@ describe('ControlitTerritoryAccessService', () => {
               {
                 targetOpportunity: {
                   projectCountry: { in: ['ESTONIA', 'LATVIA'] },
+                },
+              },
+              {
+                targetNote: {
+                  noteTerritory: { in: ['ESTONIA', 'LATVIA'] },
+                },
+              },
+              {
+                targetTask: {
+                  taskTerritory: { in: ['ESTONIA', 'LATVIA'] },
                 },
               },
             ],

@@ -99,6 +99,8 @@ const CONTROLIT_RELATION_READ_FILTERS_BY_OBJECT = {
         relationName: 'targetOpportunity',
         territoryFieldName: 'projectCountry',
       },
+      { relationName: 'targetNote', territoryFieldName: 'noteTerritory' },
+      { relationName: 'targetTask', territoryFieldName: 'taskTerritory' },
     ],
   },
   timelineActivity: {
@@ -109,6 +111,8 @@ const CONTROLIT_RELATION_READ_FILTERS_BY_OBJECT = {
         relationName: 'targetOpportunity',
         territoryFieldName: 'projectCountry',
       },
+      { relationName: 'targetNote', territoryFieldName: 'noteTerritory' },
+      { relationName: 'targetTask', territoryFieldName: 'taskTerritory' },
     ],
   },
 } as const satisfies Record<string, ControlitRelationReadFilterSpec>;
