@@ -9,11 +9,13 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from crm_contact_import import (  # noqa: E402
     COUNTRY_OPTIONS,
     build_import_plan,
+    country_value,
     ensure_company_metadata,
     map_company_type,
     note_payload,
     normalize_company_key,
     normalize_website_for_storage,
+    source_company_payload,
 )
 
 
@@ -32,6 +34,37 @@ class CrmContactImportTests(unittest.TestCase):
     def test_drops_non_url_like_website_values(self):
         self.assertEqual(normalize_website_for_storage("International"), "")
         self.assertEqual(normalize_website_for_storage("www.yit.fi/en"), "https://www.yit.fi/en")
+
+    def test_maps_all_canonical_country_values(self):
+        for label, value, _color in COUNTRY_OPTIONS:
+            with self.subTest(country=label):
+                self.assertEqual(country_value(label), value)
+            with self.subTest(country=value):
+                self.assertEqual(country_value(value), value)
+
+    def test_maps_common_country_aliases(self):
+        self.assertEqual(country_value("UAE"), "UNITED_ARAB_EMIRATES")
+        self.assertEqual(country_value("U.A.E."), "UNITED_ARAB_EMIRATES")
+        self.assertEqual(country_value("United Arab Emirates/UAE"), "UNITED_ARAB_EMIRATES")
+        self.assertEqual(country_value("Czech Republic"), "CZECHIA")
+        self.assertEqual(country_value("MENA"), "MENA")
+        self.assertEqual(country_value("Middle East & North Africa"), "MENA")
+        self.assertEqual(country_value("NZ"), "NEW_ZEALAND")
+
+    def test_source_company_payload_sets_canonical_non_baltic_territory(self):
+        payload = source_company_payload(
+            {
+                "name": "Controlit Gulf",
+                "country": "UAE",
+                "category": "",
+                "website": "",
+                "city": "",
+                "project_types": "",
+                "target_person_role": "",
+            }
+        )
+
+        self.assertEqual(payload["companyCountry"], "UNITED_ARAB_EMIRATES")
 
     def test_skips_placeholder_company_names(self):
         plan = build_import_plan(

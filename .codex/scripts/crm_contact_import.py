@@ -52,6 +52,18 @@ COUNTRY_OPTIONS = [
     ("Australia", "AUSTRALIA", "blue"),
     ("New Zealand", "NEW_ZEALAND", "green"),
 ]
+COUNTRY_VALUE_ALIASES = {
+    "uae": "UNITED_ARAB_EMIRATES",
+    "u a e": "UNITED_ARAB_EMIRATES",
+    "emirates": "UNITED_ARAB_EMIRATES",
+    "czech republic": "CZECHIA",
+    "mena": "MENA",
+    "middle east and north africa": "MENA",
+    "middle east north africa": "MENA",
+    "united arab emirates uae": "UNITED_ARAB_EMIRATES",
+    "new zealand": "NEW_ZEALAND",
+    "nz": "NEW_ZEALAND",
+}
 PILOT_COMPANY_KEYS = {"yit", "sensor innovation", "dayone"}
 
 EMAIL_RE = re.compile(r"[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+")
@@ -203,15 +215,22 @@ def link_label(value: str) -> str:
     return domain or clean(value)
 
 
-def country_value(country: str) -> str | None:
+def normalize_country_key(country: str) -> str:
     normalized = clean(country).casefold()
-    if normalized == "finland":
-        return "FINLAND"
-    if normalized == "estonia":
-        return "ESTONIA"
-    if normalized == "lithuania":
-        return "LITHUANIA"
-    return None
+    normalized = normalized.replace("&", " and ")
+    normalized = re.sub(r"[/(),.;:_-]+", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized)
+    return normalized.strip()
+
+
+def country_value(country: str) -> str | None:
+    normalized = normalize_country_key(country)
+    values_by_key = {
+        **{normalize_country_key(label): value for label, value, _color in COUNTRY_OPTIONS},
+        **{normalize_country_key(value): value for _label, value, _color in COUNTRY_OPTIONS},
+        **COUNTRY_VALUE_ALIASES,
+    }
+    return values_by_key.get(normalized)
 
 
 def map_company_type(category: str) -> str | None:
