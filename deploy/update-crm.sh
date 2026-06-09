@@ -56,37 +56,44 @@ wait_for_server_health() {
   local deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
 
   while ((SECONDS < deadline)); do
-    local server_container_id
-    server_container_id="$(compose ps -q server)"
+    local container_id
+    container_id="$(compose ps -q server)"
 
-    if [[ -n "${server_container_id}" ]]; then
-      local health_status
-      health_status="$(
-        docker inspect \
-          -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
-          "${server_container_id}" 2>/dev/null || true
-      )"
-
-      case "${health_status}" in
-        healthy)
-          echo "Server is healthy."
-          return 0
-          ;;
-        exited | dead)
-          echo "ERROR: Server reached terminal state: ${health_status}." >&2
-          print_status_and_logs
-          return 1
-          ;;
-        unhealthy)
-          echo "Waiting for server health: unhealthy..."
-          ;;
-        *)
-          echo "Waiting for server health: ${health_status:-unknown}..."
-          ;;
-      esac
-    else
-      echo "Waiting for server container to be created..."
+    if [[ -z "${container_id}" ]]; then
+      echo "ERROR: Server container is missing after rollout start." >&2
+      print_status_and_logs
+      return 1
     fi
+
+    local state_status
+    state_status="$(docker inspect --format '{{.State.Status}}' "${container_id}" 2>/dev/null || true)"
+
+    case "${state_status}" in
+      exited | dead | removing)
+        echo "ERROR: Server reached terminal state: ${state_status}." >&2
+        print_status_and_logs
+        return 1
+        ;;
+    esac
+
+    local health_status
+    health_status="$(
+      docker inspect \
+        --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
+        "${container_id}" 2>/dev/null || true
+    )"
+
+    if [[ "${health_status}" == "healthy" ]]; then
+      echo "Server is healthy."
+      return 0
+    fi
+
+    if [[ "${health_status}" == "no-healthcheck" && "${state_status}" == "running" ]]; then
+      echo "Server is running without a healthcheck."
+      return 0
+    fi
+
+    echo "Waiting for server health: state=${state_status:-unknown}, health=${health_status:-unknown}..."
 
     sleep "${HEALTH_POLL_SECONDS}"
   done
