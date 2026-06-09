@@ -43,6 +43,15 @@ export class OnboardingService {
     );
   }
 
+  private isEmailOrCalendarSyncProviderEnabled() {
+    return (
+      this.twentyConfigService.get('MESSAGING_PROVIDER_GMAIL_ENABLED') ||
+      this.twentyConfigService.get('CALENDAR_PROVIDER_GOOGLE_ENABLED') ||
+      this.twentyConfigService.get('MESSAGING_PROVIDER_MICROSOFT_ENABLED') ||
+      this.twentyConfigService.get('CALENDAR_PROVIDER_MICROSOFT_ENABLED')
+    );
+  }
+
   async getOnboardingStatus({
     user,
     workspaceId,
@@ -99,7 +108,15 @@ export class OnboardingService {
     }
 
     if (isConnectAccountPending) {
-      return OnboardingStatus.SYNC_EMAIL;
+      if (this.isEmailOrCalendarSyncProviderEnabled()) {
+        return OnboardingStatus.SYNC_EMAIL;
+      }
+
+      await this.userVarsService.delete({
+        userId: user.id,
+        workspaceId: workspace.id,
+        key: OnboardingStepKeys.ONBOARDING_CONNECT_ACCOUNT_PENDING,
+      });
     }
 
     if (isInviteTeamPending) {

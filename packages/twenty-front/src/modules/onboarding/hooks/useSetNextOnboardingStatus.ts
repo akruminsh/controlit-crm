@@ -9,6 +9,10 @@ import {
   currentWorkspaceState,
 } from '@/auth/states/currentWorkspaceState';
 import { calendarBookingPageIdState } from '@/client-config/states/calendarBookingPageIdState';
+import { isGoogleCalendarEnabledState } from '@/client-config/states/isGoogleCalendarEnabledState';
+import { isGoogleMessagingEnabledState } from '@/client-config/states/isGoogleMessagingEnabledState';
+import { isMicrosoftCalendarEnabledState } from '@/client-config/states/isMicrosoftCalendarEnabledState';
+import { isMicrosoftMessagingEnabledState } from '@/client-config/states/isMicrosoftMessagingEnabledState';
 import { usePermissionFlagMap } from '@/settings/roles/hooks/usePermissionFlagMap';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 
@@ -67,9 +71,27 @@ export const useSetNextOnboardingStatus = () => {
   const currentUser = useAtomStateValue(currentUserState);
   const currentWorkspace = useAtomStateValue(currentWorkspaceState);
   const calendarBookingPageId = useAtomStateValue(calendarBookingPageIdState);
+  const isGoogleCalendarEnabled = useAtomStateValue(
+    isGoogleCalendarEnabledState,
+  );
+  const isGoogleMessagingEnabled = useAtomStateValue(
+    isGoogleMessagingEnabledState,
+  );
+  const isMicrosoftCalendarEnabled = useAtomStateValue(
+    isMicrosoftCalendarEnabledState,
+  );
+  const isMicrosoftMessagingEnabled = useAtomStateValue(
+    isMicrosoftMessagingEnabledState,
+  );
   const permissionMap = usePermissionFlagMap();
+  const isEmailOrCalendarSyncProviderEnabled =
+    isGoogleCalendarEnabled ||
+    isGoogleMessagingEnabled ||
+    isMicrosoftCalendarEnabled ||
+    isMicrosoftMessagingEnabled;
   const isAccountSyncEnabled =
-    permissionMap[PermissionFlagType.CONNECTED_ACCOUNTS];
+    permissionMap[PermissionFlagType.CONNECTED_ACCOUNTS] &&
+    isEmailOrCalendarSyncProviderEnabled;
 
   return useCallback(() => {
     const nextOnboardingStatus = getNextOnboardingStatus({
