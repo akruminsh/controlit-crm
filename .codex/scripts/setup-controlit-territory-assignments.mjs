@@ -18,6 +18,15 @@ const TERRITORIES = new Set([
   'LATVIA',
   'UNITED_ARAB_EMIRATES',
   'ASIA',
+  'CZECHIA',
+  'SLOVAKIA',
+  'SLOVENIA',
+  'CROATIA',
+  'ROMANIA',
+  'HUNGARY',
+  'MENA',
+  'AUSTRALIA',
+  'NEW_ZEALAND',
 ]);
 
 const { isDryRun, skipBackup } = parseCommonArgs();

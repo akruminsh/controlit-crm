@@ -18,6 +18,15 @@ const TERRITORY_OPTIONS = [
   ['Latvia', 'LATVIA', 'turquoise'],
   ['United Arab Emirates', 'UNITED_ARAB_EMIRATES', 'purple'],
   ['Asia', 'ASIA', 'yellow'],
+  ['Czechia', 'CZECHIA', 'orange'],
+  ['Slovakia', 'SLOVAKIA', 'red'],
+  ['Slovenia', 'SLOVENIA', 'pink'],
+  ['Croatia', 'CROATIA', 'sky'],
+  ['Romania', 'ROMANIA', 'green'],
+  ['Hungary', 'HUNGARY', 'gray'],
+  ['MENA region', 'MENA', 'purple'],
+  ['Australia', 'AUSTRALIA', 'blue'],
+  ['New Zealand', 'NEW_ZEALAND', 'green'],
 ];
 
 const FIELD_DEFINITIONS = [

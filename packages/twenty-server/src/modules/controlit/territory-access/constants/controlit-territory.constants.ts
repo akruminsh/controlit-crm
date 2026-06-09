@@ -5,6 +5,15 @@ export const CONTROLIT_TERRITORIES = [
   'LATVIA',
   'UNITED_ARAB_EMIRATES',
   'ASIA',
+  'CZECHIA',
+  'SLOVAKIA',
+  'SLOVENIA',
+  'CROATIA',
+  'ROMANIA',
+  'HUNGARY',
+  'MENA',
+  'AUSTRALIA',
+  'NEW_ZEALAND',
 ] as const;
 
 export type ControlitTerritory = (typeof CONTROLIT_TERRITORIES)[number];

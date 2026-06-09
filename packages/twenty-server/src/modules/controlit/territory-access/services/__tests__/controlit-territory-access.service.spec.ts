@@ -167,6 +167,43 @@ describe('ControlitTerritoryAccessService', () => {
     });
   });
 
+  it('keeps newer partner territories in scoped read filters', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: [
+            'CZECHIA',
+            'SLOVAKIA',
+            'MENA',
+            'AUSTRALIA',
+            'NEW_ZEALAND',
+          ],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'company',
+        CommonQueryNames.FIND_MANY,
+        { filter: { name: { ilike: '%partner%' } } },
+      ),
+    ).resolves.toEqual({
+      filter: {
+        and: [
+          { name: { ilike: '%partner%' } },
+          {
+            companyCountry: {
+              in: ['CZECHIA', 'SLOVAKIA', 'MENA', 'AUSTRALIA', 'NEW_ZEALAND'],
+            },
+          },
+        ],
+      },
+    });
+  });
+
   it('blocks non-branch managers from updating companies', async () => {
     const { service } = setup({
       assignmentRows: [
