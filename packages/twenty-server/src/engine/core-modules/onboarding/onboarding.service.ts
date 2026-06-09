@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { isNonEmptyString } from '@sniptt/guards';
 import { isDefined } from 'twenty-shared/utils';
@@ -9,8 +9,8 @@ import { BillingService } from 'src/engine/core-modules/billing/services/billing
 import { OnboardingStatus } from 'src/engine/core-modules/onboarding/enums/onboarding-status.enum';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { UserVarsService } from 'src/engine/core-modules/user/user-vars/services/user-vars.service';
-import { UserEntity } from 'src/engine/core-modules/user/user.entity';
-import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { type UserEntity } from 'src/engine/core-modules/user/user.entity';
+import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 
 export enum OnboardingStepKeys {
   ONBOARDING_CONNECT_ACCOUNT_PENDING = 'ONBOARDING_CONNECT_ACCOUNT_PENDING',
@@ -29,14 +29,26 @@ export type OnboardingKeyValueTypeMap = {
 @Injectable()
 export class OnboardingService {
   constructor(
+    @Inject(BillingService)
     private readonly billingService: BillingService,
+    @Inject(UserVarsService)
     private readonly userVarsService: UserVarsService<OnboardingKeyValueTypeMap>,
+    @Inject(TwentyConfigService)
     private readonly twentyConfigService: TwentyConfigService,
   ) {}
 
   private isWorkspaceActivationPending(workspace: WorkspaceEntity) {
     return (
       workspace.activationStatus === WorkspaceActivationStatus.PENDING_CREATION
+    );
+  }
+
+  private isEmailOrCalendarSyncProviderEnabled() {
+    return (
+      this.twentyConfigService.get('MESSAGING_PROVIDER_GMAIL_ENABLED') ||
+      this.twentyConfigService.get('CALENDAR_PROVIDER_GOOGLE_ENABLED') ||
+      this.twentyConfigService.get('MESSAGING_PROVIDER_MICROSOFT_ENABLED') ||
+      this.twentyConfigService.get('CALENDAR_PROVIDER_MICROSOFT_ENABLED')
     );
   }
 
@@ -78,7 +90,15 @@ export class OnboardingService {
     }
 
     if (isConnectAccountPending) {
-      return OnboardingStatus.SYNC_EMAIL;
+      if (!this.isEmailOrCalendarSyncProviderEnabled()) {
+        await this.setOnboardingConnectAccountPending({
+          userId: user.id,
+          workspaceId: workspace.id,
+          value: false,
+        });
+      } else {
+        return OnboardingStatus.SYNC_EMAIL;
+      }
     }
 
     if (isInviteTeamPending) {
@@ -120,7 +140,7 @@ export class OnboardingService {
     },
     queryRunner?: QueryRunner,
   ) {
-    if (!value) {
+    if (!value || !this.isEmailOrCalendarSyncProviderEnabled()) {
       await this.userVarsService.delete(
         {
           userId,
