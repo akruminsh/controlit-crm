@@ -40,6 +40,13 @@ run_upgrade_command() {
     server yarn command:prod "$@"
 }
 
+run_database_migration() {
+  compose run --rm -T \
+    -e DISABLE_DB_MIGRATIONS=true \
+    -e DISABLE_CRON_JOBS_REGISTRATION=true \
+    server yarn database:migrate:prod
+}
+
 read_env_value() {
   local key="$1"
   local line
@@ -147,6 +154,9 @@ compose up -d db redis
 
 echo "Stopping app services before explicit upgrade..."
 compose stop worker server
+
+echo "Running database migrations..."
+run_database_migration
 
 echo "Flushing cache before upgrade..."
 run_upgrade_command cache:flush

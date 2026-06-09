@@ -7,7 +7,13 @@ import { FastInstanceCommand } from 'src/engine/core-modules/upgrade/interfaces/
 export class RenamePermissionFlagToRolePermissionFlagFastInstanceCommand implements FastInstanceCommand {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "core"."permissionFlag" RENAME TO "rolePermissionFlag"`,
+      `DO $$
+      BEGIN
+        IF to_regclass('core."permissionFlag"') IS NOT NULL
+          AND to_regclass('core."rolePermissionFlag"') IS NULL THEN
+          ALTER TABLE "core"."permissionFlag" RENAME TO "rolePermissionFlag";
+        END IF;
+      END $$`,
     );
 
     await queryRunner.query(
@@ -17,41 +23,102 @@ export class RenamePermissionFlagToRolePermissionFlagFastInstanceCommand impleme
       `ALTER TABLE "core"."rolePermissionFlag" DROP CONSTRAINT IF EXISTS "PK_8c144a021030d7e3326835a04c8"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "core"."rolePermissionFlag" ADD CONSTRAINT "PK_76591adc8035c2e7b0cd6115136" PRIMARY KEY ("id")`,
+      `DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'PK_76591adc8035c2e7b0cd6115136'
+          AND conrelid = 'core."rolePermissionFlag"'::regclass
+        ) THEN
+          ALTER TABLE "core"."rolePermissionFlag" ADD CONSTRAINT "PK_76591adc8035c2e7b0cd6115136" PRIMARY KEY ("id");
+        END IF;
+      END $$`,
     );
 
     await queryRunner.query(
-      `ALTER TABLE "core"."rolePermissionFlag" RENAME CONSTRAINT "IDX_PERMISSION_FLAG_FLAG_ROLE_ID_UNIQUE" TO "IDX_ROLE_PERMISSION_FLAG_FLAG_ROLE_ID_UNIQUE"`,
+      `DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'IDX_PERMISSION_FLAG_FLAG_ROLE_ID_UNIQUE'
+          AND conrelid = 'core."rolePermissionFlag"'::regclass
+        ) AND NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'IDX_ROLE_PERMISSION_FLAG_FLAG_ROLE_ID_UNIQUE'
+          AND conrelid = 'core."rolePermissionFlag"'::regclass
+        ) THEN
+          ALTER TABLE "core"."rolePermissionFlag" RENAME CONSTRAINT "IDX_PERMISSION_FLAG_FLAG_ROLE_ID_UNIQUE" TO "IDX_ROLE_PERMISSION_FLAG_FLAG_ROLE_ID_UNIQUE";
+        END IF;
+      END $$`,
     );
 
     await queryRunner.query(
-      `ALTER INDEX "core"."IDX_PERMISSION_FLAG_ROLE_ID" RENAME TO "IDX_ROLE_PERMISSION_FLAG_ROLE_ID"`,
+      `DO $$
+      BEGIN
+        IF to_regclass('core."IDX_PERMISSION_FLAG_ROLE_ID"') IS NOT NULL
+          AND to_regclass('core."IDX_ROLE_PERMISSION_FLAG_ROLE_ID"') IS NULL THEN
+          ALTER INDEX "core"."IDX_PERMISSION_FLAG_ROLE_ID" RENAME TO "IDX_ROLE_PERMISSION_FLAG_ROLE_ID";
+        END IF;
+      END $$`,
     );
 
     await queryRunner.query(
-      `ALTER TABLE "core"."rolePermissionFlag" DROP CONSTRAINT "FK_13f8ca9c517976733a1ce4c10eb"`,
+      `ALTER TABLE "core"."rolePermissionFlag" DROP CONSTRAINT IF EXISTS "FK_13f8ca9c517976733a1ce4c10eb"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "core"."rolePermissionFlag" DROP CONSTRAINT "FK_835bc9f7ef959debfc5cd268049"`,
+      `ALTER TABLE "core"."rolePermissionFlag" DROP CONSTRAINT IF EXISTS "FK_835bc9f7ef959debfc5cd268049"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "core"."rolePermissionFlag" DROP CONSTRAINT "FK_b26a9d39a88d0e72373c677c6c5"`,
+      `ALTER TABLE "core"."rolePermissionFlag" DROP CONSTRAINT IF EXISTS "FK_b26a9d39a88d0e72373c677c6c5"`,
     );
     await queryRunner.query(
-      `DROP INDEX "core"."IDX_da8ffd3c24b4a819430a861067"`,
+      `DROP INDEX IF EXISTS "core"."IDX_da8ffd3c24b4a819430a861067"`,
     );
 
     await queryRunner.query(
-      `CREATE UNIQUE INDEX "IDX_e4559ae0dba56e53714137c704" ON "core"."rolePermissionFlag" ("workspaceId", "universalIdentifier")`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_e4559ae0dba56e53714137c704" ON "core"."rolePermissionFlag" ("workspaceId", "universalIdentifier")`,
     );
     await queryRunner.query(
-      `ALTER TABLE "core"."rolePermissionFlag" ADD CONSTRAINT "FK_d47b1ebee75d98daa0c870c26e3" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+      `DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'FK_d47b1ebee75d98daa0c870c26e3'
+          AND conrelid = 'core."rolePermissionFlag"'::regclass
+        ) THEN
+          ALTER TABLE "core"."rolePermissionFlag" ADD CONSTRAINT "FK_d47b1ebee75d98daa0c870c26e3" FOREIGN KEY ("workspaceId") REFERENCES "core"."workspace"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+        END IF;
+      END $$`,
     );
     await queryRunner.query(
-      `ALTER TABLE "core"."rolePermissionFlag" ADD CONSTRAINT "FK_3835ecc1019327566d35728c8ba" FOREIGN KEY ("applicationId") REFERENCES "core"."application"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+      `DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'FK_3835ecc1019327566d35728c8ba'
+          AND conrelid = 'core."rolePermissionFlag"'::regclass
+        ) THEN
+          ALTER TABLE "core"."rolePermissionFlag" ADD CONSTRAINT "FK_3835ecc1019327566d35728c8ba" FOREIGN KEY ("applicationId") REFERENCES "core"."application"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+        END IF;
+      END $$`,
     );
     await queryRunner.query(
-      `ALTER TABLE "core"."rolePermissionFlag" ADD CONSTRAINT "FK_4c6ea38698de230b0ec18fa2110" FOREIGN KEY ("roleId") REFERENCES "core"."role"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+      `DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'FK_4c6ea38698de230b0ec18fa2110'
+          AND conrelid = 'core."rolePermissionFlag"'::regclass
+        ) THEN
+          ALTER TABLE "core"."rolePermissionFlag" ADD CONSTRAINT "FK_4c6ea38698de230b0ec18fa2110" FOREIGN KEY ("roleId") REFERENCES "core"."role"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+        END IF;
+      END $$`,
     );
   }
 
