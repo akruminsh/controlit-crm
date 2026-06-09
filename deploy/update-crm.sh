@@ -5,10 +5,29 @@
 set -euo pipefail
 
 DEPLOY_DIR="/opt/controlit-crm"
-COMPOSE_FILE="docker-compose.prod.yml"
+COMPOSE_FILE="${COMPOSE_FILE:-}"
 ENV_FILE=".env"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-180}"
 HEALTH_POLL_SECONDS="${HEALTH_POLL_SECONDS:-5}"
+
+resolve_compose_file() {
+  if [[ -n "${COMPOSE_FILE}" ]]; then
+    if [[ ! -f "${COMPOSE_FILE}" ]]; then
+      echo "ERROR: COMPOSE_FILE=${COMPOSE_FILE} does not exist in ${DEPLOY_DIR}." >&2
+      exit 1
+    fi
+    return
+  fi
+
+  if [[ -f "docker-compose.prod.yml" ]]; then
+    COMPOSE_FILE="docker-compose.prod.yml"
+  elif [[ -f "docker-compose.yml" ]]; then
+    COMPOSE_FILE="docker-compose.yml"
+  else
+    echo "ERROR: No docker-compose.prod.yml or docker-compose.yml found in ${DEPLOY_DIR}." >&2
+    exit 1
+  fi
+}
 
 compose() {
   docker compose -f "${COMPOSE_FILE}" "$@"
@@ -111,8 +130,10 @@ wait_for_server_health() {
 }
 
 cd "${DEPLOY_DIR}"
+resolve_compose_file
 validate_database_password
 
+echo "Using compose file: ${COMPOSE_FILE}"
 echo "Pulling latest Controlit CRM server and worker images..."
 compose pull server worker
 
