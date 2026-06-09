@@ -31,6 +31,7 @@ const TERRITORY_OPTIONS = [
 
 const FIELD_DEFINITIONS = [
   territoryField('company', 'companyCountry', 'Company country'),
+  territoryField('note', 'noteTerritory', 'Note territory'),
   territoryField('person', 'personTerritory', 'Person territory'),
   territoryField('opportunity', 'projectCountry', 'Project country'),
   territoryField('task', 'taskTerritory', 'Task territory'),
@@ -48,6 +49,12 @@ const VIEW_TARGETS = [
     fieldName: 'personTerritory',
     viewNames: ['All People'],
     afterFieldNames: ['company', 'jobTitle'],
+  },
+  {
+    objectName: 'note',
+    fieldName: 'noteTerritory',
+    viewNames: ['All Notes'],
+    afterFieldNames: ['noteTargets', 'title'],
   },
   {
     objectName: 'opportunity',

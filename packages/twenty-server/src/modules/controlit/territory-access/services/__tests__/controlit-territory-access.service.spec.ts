@@ -204,6 +204,33 @@ describe('ControlitTerritoryAccessService', () => {
     });
   });
 
+  it('adds territory filters to scoped note reads', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'note',
+        CommonQueryNames.FIND_MANY,
+        { filter: { title: { ilike: '%source notes%' } } },
+      ),
+    ).resolves.toEqual({
+      filter: {
+        and: [
+          { title: { ilike: '%source notes%' } },
+          { noteTerritory: { in: ['FINLAND'] } },
+        ],
+      },
+    });
+  });
+
   it('blocks non-branch managers from updating companies', async () => {
     const { service } = setup({
       assignmentRows: [
@@ -328,6 +355,32 @@ describe('ControlitTerritoryAccessService', () => {
         'task',
         CommonQueryNames.UPDATE_ONE,
         { id: 'task-id', data: { title: 'Call customer' } },
+      ),
+    ).rejects.toMatchObject({
+      code: PermissionsExceptionCode.PERMISSION_DENIED,
+    } satisfies Partial<PermissionsException>);
+  });
+
+  it('blocks branch managers from updating notes outside their territories', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: true,
+        },
+      ],
+      record: {
+        id: 'note-id',
+        noteTerritory: 'ESTONIA',
+      },
+    });
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'note',
+        CommonQueryNames.UPDATE_ONE,
+        { id: 'note-id', data: { title: 'Private note' } },
       ),
     ).rejects.toMatchObject({
       code: PermissionsExceptionCode.PERMISSION_DENIED,

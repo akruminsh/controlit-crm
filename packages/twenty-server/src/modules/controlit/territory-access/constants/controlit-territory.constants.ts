@@ -20,6 +20,7 @@ export type ControlitTerritory = (typeof CONTROLIT_TERRITORIES)[number];
 
 export const CONTROLIT_TERRITORY_FIELD_BY_OBJECT = {
   company: 'companyCountry',
+  note: 'noteTerritory',
   person: 'personTerritory',
   opportunity: 'projectCountry',
   task: 'taskTerritory',

@@ -45,12 +45,22 @@ async function main() {
 
   console.log(`Workspace: ${client.workspace.displayName} (${client.workspace.id})`);
 
-  const [companies, people, opportunities, tasks, taskTargets] = await Promise.all([
+  const [
+    companies,
+    people,
+    opportunities,
+    tasks,
+    notes,
+    taskTargets,
+    noteTargets,
+  ] = await Promise.all([
     fetchAll(client, 'companies'),
     fetchAll(client, 'people'),
     fetchAll(client, 'opportunities'),
     fetchAll(client, 'tasks'),
+    fetchAll(client, 'notes'),
     fetchAll(client, 'taskTargets'),
+    fetchAll(client, 'noteTargets'),
   ]);
 
   const companyTerritoryById = new Map(
@@ -125,6 +135,32 @@ async function main() {
         id: task.id,
         label: task.title ?? task.id,
         data: { taskTerritory: territory },
+      });
+    }
+  }
+
+  const noteTargetsByNoteId = groupBy(noteTargets, (noteTarget) =>
+    relationId(noteTarget, 'note'),
+  );
+
+  for (const note of notes) {
+    if (normalizeTerritory(note.noteTerritory)) {
+      continue;
+    }
+
+    const territory = inferNoteTerritory({
+      noteTargets: noteTargetsByNoteId.get(note.id) ?? [],
+      companyTerritoryById,
+      personById,
+      opportunityById,
+    });
+
+    if (territory) {
+      actions.push({
+        object: 'notes',
+        id: note.id,
+        label: note.title ?? note.id,
+        data: { noteTerritory: territory },
       });
     }
   }
@@ -220,6 +256,80 @@ function inferTaskTerritory({
   }
 
   return null;
+}
+
+function inferNoteTerritory({
+  noteTargets,
+  companyTerritoryById,
+  personById,
+  opportunityById,
+}) {
+  const territories = new Set();
+
+  for (const noteTarget of noteTargets) {
+    addTerritory(
+      territories,
+      inferOpportunityTerritory(
+        relationId(noteTarget, 'opportunity'),
+        opportunityById,
+        companyTerritoryById,
+      ),
+    );
+    addTerritory(
+      territories,
+      inferCompanyTerritory(relationId(noteTarget, 'company'), companyTerritoryById),
+    );
+    addTerritory(
+      territories,
+      inferPersonTerritory(
+        relationId(noteTarget, 'person'),
+        personById,
+        companyTerritoryById,
+      ),
+    );
+  }
+
+  return territories.size === 1 ? [...territories][0] : null;
+}
+
+function inferOpportunityTerritory(
+  opportunityId,
+  opportunityById,
+  companyTerritoryById,
+) {
+  const opportunity = opportunityId ? opportunityById.get(opportunityId) : null;
+  const opportunityTerritory = normalizeTerritory(opportunity?.projectCountry);
+
+  if (opportunityTerritory) {
+    return opportunityTerritory;
+  }
+
+  const companyId = opportunity ? relationId(opportunity, 'company') : null;
+
+  return inferCompanyTerritory(companyId, companyTerritoryById);
+}
+
+function inferCompanyTerritory(companyId, companyTerritoryById) {
+  return companyId ? companyTerritoryById.get(companyId) ?? null : null;
+}
+
+function inferPersonTerritory(personId, personById, companyTerritoryById) {
+  const person = personId ? personById.get(personId) : null;
+  const personTerritory = normalizeTerritory(person?.personTerritory);
+
+  if (personTerritory) {
+    return personTerritory;
+  }
+
+  const companyId = person ? relationId(person, 'company') : null;
+
+  return inferCompanyTerritory(companyId, companyTerritoryById);
+}
+
+function addTerritory(territories, territory) {
+  if (territory) {
+    territories.add(territory);
+  }
 }
 
 function relationId(record, relationName) {
