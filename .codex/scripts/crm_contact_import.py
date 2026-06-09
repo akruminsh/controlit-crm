@@ -61,6 +61,7 @@ COUNTRY_VALUE_ALIASES = {
     "middle east and north africa": "MENA",
     "middle east north africa": "MENA",
     "united arab emirates uae": "UNITED_ARAB_EMIRATES",
+    "uae united arab emirates": "UNITED_ARAB_EMIRATES",
     "new zealand": "NEW_ZEALAND",
     "nz": "NEW_ZEALAND",
 }

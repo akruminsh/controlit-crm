@@ -46,6 +46,7 @@ class CrmContactImportTests(unittest.TestCase):
         self.assertEqual(country_value("UAE"), "UNITED_ARAB_EMIRATES")
         self.assertEqual(country_value("U.A.E."), "UNITED_ARAB_EMIRATES")
         self.assertEqual(country_value("United Arab Emirates/UAE"), "UNITED_ARAB_EMIRATES")
+        self.assertEqual(country_value("UAE / United Arab Emirates"), "UNITED_ARAB_EMIRATES")
         self.assertEqual(country_value("Czech Republic"), "CZECHIA")
         self.assertEqual(country_value("MENA"), "MENA")
         self.assertEqual(country_value("Middle East & North Africa"), "MENA")
