@@ -2,7 +2,6 @@ import { styled } from '@linaria/react';
 import { isNonEmptyString } from '@sniptt/guards';
 import { AppPath } from 'twenty-shared/types';
 import { getImageAbsoluteURI, isDefined } from 'twenty-shared/utils';
-import { Avatar } from 'twenty-ui-deprecated/display';
 import { UndecoratedLink } from 'twenty-ui-deprecated/navigation';
 import { themeCssVariables } from 'twenty-ui-deprecated/theme-constants';
 import { REACT_APP_SERVER_BASE_URL } from '~/config';
@@ -15,13 +14,14 @@ type LogoProps = {
   onClick?: () => void;
 };
 
+// Controlit: Increased logo size for cleaner branding
 const StyledContainer = styled.div`
-  height: ${themeCssVariables.spacing[12]};
+  height: ${themeCssVariables.spacing[16]};
   margin-bottom: ${themeCssVariables.spacing[4]};
   margin-top: ${themeCssVariables.spacing[4]};
 
   position: relative;
-  width: ${themeCssVariables.spacing[12]};
+  width: ${themeCssVariables.spacing[16]};
 `;
 
 const StyledSecondaryLogo = styled.img`
@@ -50,12 +50,7 @@ const StyledPrimaryLogo = styled.div`
   width: 100%;
 `;
 
-export const Logo = ({
-  primaryLogo,
-  secondaryLogo,
-  placeholder,
-  onClick,
-}: LogoProps) => {
+export const Logo = ({ primaryLogo, secondaryLogo, onClick }: LogoProps) => {
   const { redirectToDefaultDomain } = useRedirectToDefaultDomain();
   const defaultPrimaryLogoUrl = `${window.location.origin}/images/icons/android/android-launchericon-192-192.png`;
 
@@ -89,21 +84,11 @@ export const Logo = ({
           style={{ backgroundImage: `url(${primaryLogoUrl})` }}
         />
       )}
-      {isDefined(secondaryLogoUrl) ? (
+      {/* Controlit: Only show secondary logo if explicitly uploaded, no placeholder avatar */}
+      {isDefined(secondaryLogoUrl) && (
         <StyledSecondaryLogoContainer>
           <StyledSecondaryLogo src={secondaryLogoUrl} />
         </StyledSecondaryLogoContainer>
-      ) : (
-        isDefined(placeholder) && (
-          <StyledSecondaryLogoContainer>
-            <Avatar
-              size="lg"
-              placeholder={placeholder}
-              type="squared"
-              placeholderColorSeed={placeholder}
-            />
-          </StyledSecondaryLogoContainer>
-        )
       )}
     </StyledContainer>
   );

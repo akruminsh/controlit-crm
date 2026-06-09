@@ -109,8 +109,6 @@ export const SignInUp = () => {
     setSignInUpStep(SignInUpStep.Init);
   };
 
-  const isGlobalScope = isDefaultDomain && isMultiWorkspaceEnabled;
-
   const title = useMemo(() => {
     if (isDefined(workspaceInviteHash)) {
       const workspaceName = workspaceFromInviteHash?.displayName ?? '';
@@ -129,22 +127,11 @@ export const SignInUp = () => {
       return t`Verify code from the app`;
     }
 
-    if (isGlobalScope) {
-      return t`Welcome to Twenty`;
-    }
-
-    const workspaceName = workspacePublicData?.displayName;
-
-    if (!workspaceName) {
-      return t`Welcome to your workspace`;
-    }
-
-    return t`Welcome, ${workspaceName}.`;
+    // Controlit: Hardcoded welcome message for sales team
+    return t`Welcome back to Controlit Factory CRM`;
   }, [
     workspaceInviteHash,
     signInUpStep,
-    workspacePublicData?.displayName,
-    isGlobalScope,
     t,
     workspaceFromInviteHash?.displayName,
   ]);
