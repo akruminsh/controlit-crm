@@ -39,7 +39,7 @@ export const isTaskDueAtOverdue = ({
   now = Temporal.Now.instant(),
   timeZone = 'UTC',
 }: IsTaskDueAtOverdueParams) => {
-  if (status === 'DONE') {
+  if (status !== 'TODO' && status !== 'IN_PROGRESS') {
     return false;
   }
 

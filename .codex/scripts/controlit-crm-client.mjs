@@ -43,6 +43,7 @@ export function loadConfig() {
 
 export function validateAdminConfig(config) {
   if (config.loginToken) {
+    assertLoginTokenWorkspaceMatchesConfig(config);
     return;
   }
 
@@ -67,9 +68,11 @@ export async function createCrmClient(config) {
   let workspace;
 
   if (config.loginToken) {
+    const loginTokenWorkspaceId = assertLoginTokenWorkspaceMatchesConfig(config);
+
     workspace = {
-      id: config.workspaceId ?? 'workspace-from-login-token',
-      displayName: config.workspaceId ?? 'Workspace from CRM_LOGIN_TOKEN',
+      id: loginTokenWorkspaceId,
+      displayName: loginTokenWorkspaceId,
       loginToken: config.loginToken,
       workspaceUrls: {
         customUrl: config.baseUrl,
@@ -148,6 +151,40 @@ export async function createCrmClient(config) {
       return restRequest(config, { method, path, body, token });
     },
   };
+}
+
+function assertLoginTokenWorkspaceMatchesConfig(config) {
+  const loginTokenWorkspaceId = decodeLoginTokenWorkspaceId(config.loginToken);
+
+  if (config.workspaceId && loginTokenWorkspaceId !== config.workspaceId) {
+    throw new Error(
+      `CRM_LOGIN_TOKEN workspaceId ${loginTokenWorkspaceId} does not match CRM_WORKSPACE_ID ${config.workspaceId}.`,
+    );
+  }
+
+  return loginTokenWorkspaceId;
+}
+
+export function decodeLoginTokenWorkspaceId(loginToken) {
+  const [, payload] = loginToken.split('.');
+
+  if (!payload) {
+    throw new Error('CRM_LOGIN_TOKEN must be a JWT with a payload.');
+  }
+
+  try {
+    const decodedPayload = JSON.parse(
+      Buffer.from(payload, 'base64url').toString('utf8'),
+    );
+
+    if (typeof decodedPayload.workspaceId !== 'string') {
+      throw new Error('missing workspaceId');
+    }
+
+    return decodedPayload.workspaceId;
+  } catch (error) {
+    throw new Error(`CRM_LOGIN_TOKEN payload is invalid: ${error.message}`);
+  }
 }
 
 export async function fetchAll(client, objectNamePlural) {

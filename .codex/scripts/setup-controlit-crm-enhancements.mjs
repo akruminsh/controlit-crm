@@ -164,7 +164,7 @@ export async function main({ config, isDryRun, ensureBackup }) {
       }
 
       if (action.kind === 'update-view-field') {
-        await updateViewField(client, action.viewFieldId, action.position);
+        await updateViewField(client, action.viewFieldId, action.update);
         console.log(`Updated ${action.fieldName} in view: ${action.view.name}`);
       }
     }
@@ -487,51 +487,113 @@ export async function planViewActions(client, object, definitions, config) {
   const viewFieldsByFieldId = new Map(
     viewFields.map((viewField) => [viewField.fieldMetadataId, viewField]),
   );
-  const basePosition = resolveBasePosition(
-    viewFields,
-    viewFieldsByFieldId,
-    fieldsByName,
-    config.afterFieldNames,
+  const fieldsById = new Map(
+    object.fieldsList.map((field) => [field.id, field]),
   );
-  const actions = [];
-
-  definitions.forEach((definition, index) => {
+  const targetItems = definitions.map((definition) => {
     const field = fieldsByName.get(definition.name);
 
     if (!field) {
       throw new Error(`Cannot add ${definition.name} to ${view.name}: field is missing.`);
     }
 
-    const existingViewField = viewFieldsByFieldId.get(field.id);
-    const position = basePosition + index + 1;
+    return {
+      isTarget: true,
+      definition,
+      field,
+      viewField: viewFieldsByFieldId.get(field.id),
+    };
+  });
+  const targetFieldIds = new Set(
+    targetItems.map((targetItem) => targetItem.field.id),
+  );
+  const orderedExistingViewFields = viewFields
+    .map((viewField, originalIndex) => ({ viewField, originalIndex }))
+    .sort(
+      (left, right) =>
+        Number(left.viewField.position) - Number(right.viewField.position) ||
+        left.originalIndex - right.originalIndex,
+    )
+    .map(({ viewField }) => ({
+      isTarget: false,
+      fieldName: fieldsById.get(viewField.fieldMetadataId)?.name ?? viewField.fieldMetadataId,
+      viewField,
+    }));
+  const existingViewFieldsWithoutTargets = orderedExistingViewFields.filter(
+    (item) => !targetFieldIds.has(item.viewField.fieldMetadataId),
+  );
+  const baseViewField = resolveBaseViewField(
+    viewFieldsByFieldId,
+    fieldsByName,
+    config.afterFieldNames,
+  );
+  const baseIndex = baseViewField
+    ? existingViewFieldsWithoutTargets.findIndex(
+        (item) => item.viewField.id === baseViewField.id,
+      )
+    : -1;
+  const insertionIndex = baseIndex === -1
+    ? existingViewFieldsWithoutTargets.length
+    : baseIndex + 1;
+  const desiredViewFieldItems = [
+    ...existingViewFieldsWithoutTargets.slice(0, insertionIndex),
+    ...targetItems,
+    ...existingViewFieldsWithoutTargets.slice(insertionIndex),
+  ];
+  const nonTargetActions = [];
+  const targetActions = [];
 
-    if (!existingViewField) {
-      actions.push({
+  desiredViewFieldItems.forEach((item, position) => {
+    if (!item.isTarget) {
+      if (Number(item.viewField.position) !== position) {
+        nonTargetActions.push({
+          kind: 'update-view-field',
+          view,
+          fieldName: item.fieldName,
+          viewFieldId: item.viewField.id,
+          update: { position },
+        });
+      }
+
+      return;
+    }
+
+    if (!item.viewField) {
+      targetActions.push({
         kind: 'create-view-field',
         view,
-        fieldName: definition.name,
-        fieldMetadataId: field.id,
+        fieldName: item.definition.name,
+        fieldMetadataId: item.field.id,
         position,
       });
       return;
     }
 
     if (
-      existingViewField.isVisible !== true ||
-      Number(existingViewField.position) !== position ||
-      Number(existingViewField.size) !== FIELD_WIDTH
+      item.viewField.isVisible !== true ||
+      Number(item.viewField.position) !== position ||
+      Number(item.viewField.size) !== FIELD_WIDTH
     ) {
-      actions.push({
+      targetActions.push({
         kind: 'update-view-field',
         view,
-        fieldName: definition.name,
-        viewFieldId: existingViewField.id,
-        position,
+        fieldName: item.definition.name,
+        viewFieldId: item.viewField.id,
+        update: {
+          isVisible: true,
+          size: FIELD_WIDTH,
+          position,
+        },
       });
     }
   });
 
-  return actions;
+  return [
+    ...nonTargetActions.sort(
+      (left, right) => Number(right.update.position) - Number(left.update.position),
+    ),
+    ...targetActions,
+  ];
 }
 
 async function getViews(client, objectMetadataId) {
@@ -571,8 +633,7 @@ async function getViewFields(client, viewId) {
   return data.getViewFields;
 }
 
-function resolveBasePosition(
-  viewFields,
+function resolveBaseViewField(
   viewFieldsByFieldId,
   fieldsByName,
   afterFieldNames,
@@ -582,11 +643,11 @@ function resolveBasePosition(
     const viewField = field ? viewFieldsByFieldId.get(field.id) : undefined;
 
     if (viewField) {
-      return Number(viewField.position);
+      return viewField;
     }
   }
 
-  return maxPosition(viewFields);
+  return undefined;
 }
 
 export async function createViewField(client, viewId, fieldMetadataId, position) {
@@ -616,7 +677,7 @@ export async function createViewField(client, viewId, fieldMetadataId, position)
   return data.createViewField;
 }
 
-export async function updateViewField(client, viewFieldId, position) {
+export async function updateViewField(client, viewFieldId, update) {
   const data = await client.metadata(
     `
       mutation UpdateViewField($input: UpdateViewFieldInput!) {
@@ -632,11 +693,7 @@ export async function updateViewField(client, viewFieldId, position) {
     {
       input: {
         id: viewFieldId,
-        update: {
-          isVisible: true,
-          size: FIELD_WIDTH,
-          position,
-        },
+        update,
       },
     },
   );
@@ -698,12 +755,6 @@ function cloneOptions(options) {
 
 function mapByName(items) {
   return new Map(items.map((item) => [item.name, item]));
-}
-
-function maxPosition(items) {
-  return items.length === 0
-    ? 0
-    : Math.max(...items.map((item) => Number(item.position)));
 }
 
 function maxOptionPosition(options) {

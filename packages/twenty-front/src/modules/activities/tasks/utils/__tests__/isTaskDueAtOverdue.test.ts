@@ -24,9 +24,18 @@ describe('isTaskDueAtOverdue', () => {
     ).toBe(false);
   });
 
+  it('returns false when status has not been loaded', () => {
+    expect(
+      isTaskDueAtOverdue({ dueAt: '2024-04-01', status: undefined, now }),
+    ).toBe(false);
+  });
+
   it('returns true when the due date is before today', () => {
     expect(
       isTaskDueAtOverdue({ dueAt: '2024-04-01', status: 'TODO', now }),
+    ).toBe(true);
+    expect(
+      isTaskDueAtOverdue({ dueAt: '2024-04-01', status: 'IN_PROGRESS', now }),
     ).toBe(true);
   });
 

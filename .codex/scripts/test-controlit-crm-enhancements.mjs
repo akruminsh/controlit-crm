@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  decodeLoginTokenWorkspaceId,
+  validateAdminConfig,
+} from './controlit-crm-client.mjs';
+
+import {
   buildOptionsWithStableIds,
   companyReferenceFieldDefinitions,
   createViewField,
@@ -17,6 +22,13 @@ import {
   taskCategoryFieldDefinition,
   updateViewField,
 } from './setup-controlit-crm-enhancements.mjs';
+
+const buildUnsignedLoginToken = (payload) =>
+  [
+    Buffer.from(JSON.stringify({ alg: 'none' })).toString('base64url'),
+    Buffer.from(JSON.stringify(payload)).toString('base64url'),
+    '',
+  ].join('.');
 
 test('buildOptionsWithStableIds preserves existing option ids and appends new options', () => {
   const existingOptions = [
@@ -432,6 +444,188 @@ test('planViewActions uses metadata GraphQL and is idempotent after partial appl
   assert.deepEqual(calls[1].variables, { viewId: 'all-companies-view' });
 });
 
+test('planViewActions shifts existing view fields when inserting target fields', async () => {
+  const client = {
+    metadata: async (query) => {
+      if (query.includes('getViews')) {
+        return {
+          getViews: [
+            {
+              id: 'all-companies-view',
+              name: 'All Companies',
+              type: 'TABLE',
+              position: 0,
+            },
+          ],
+        };
+      }
+
+      if (query.includes('getViewFields')) {
+        return {
+          getViewFields: [
+            {
+              id: 'name-view-field',
+              fieldMetadataId: 'name-field',
+              isVisible: true,
+              size: FIELD_WIDTH,
+              position: 0,
+            },
+            {
+              id: 'domain-view-field',
+              fieldMetadataId: 'domain-field',
+              isVisible: true,
+              size: FIELD_WIDTH,
+              position: 1,
+            },
+          ],
+        };
+      }
+
+      throw new Error(`Unexpected query: ${query}`);
+    },
+  };
+  const company = {
+    id: 'company-object',
+    nameSingular: 'company',
+    fieldsList: [
+      { id: 'name-field', name: 'name' },
+      { id: 'domain-field', name: 'domainName' },
+      { id: 'reference-name-field', name: 'referenceName' },
+    ],
+  };
+  const referenceNameDefinition = companyReferenceFieldDefinitions.find(
+    (field) => field.name === 'referenceName',
+  );
+
+  const actions = await planViewActions(client, company, [referenceNameDefinition], {
+    viewName: 'All Companies',
+    fallbackType: 'TABLE',
+    afterFieldNames: ['name'],
+  });
+
+  assert.deepEqual(actions, [
+    {
+      kind: 'update-view-field',
+      view: {
+        id: 'all-companies-view',
+        name: 'All Companies',
+        type: 'TABLE',
+        position: 0,
+      },
+      fieldName: 'domainName',
+      viewFieldId: 'domain-view-field',
+      update: { position: 2 },
+    },
+    {
+      kind: 'create-view-field',
+      view: {
+        id: 'all-companies-view',
+        name: 'All Companies',
+        type: 'TABLE',
+        position: 0,
+      },
+      fieldName: 'referenceName',
+      fieldMetadataId: 'reference-name-field',
+      position: 1,
+    },
+  ]);
+});
+
+test('planViewActions repairs duplicate positions after partial view apply', async () => {
+  const viewFields = [
+    {
+      id: 'name-view-field',
+      fieldMetadataId: 'name-field',
+      isVisible: true,
+      size: FIELD_WIDTH,
+      position: 0,
+    },
+    {
+      id: 'reference-name-view-field',
+      fieldMetadataId: 'reference-name-field',
+      isVisible: true,
+      size: FIELD_WIDTH,
+      position: 1,
+    },
+    {
+      id: 'domain-view-field',
+      fieldMetadataId: 'domain-field',
+      isVisible: true,
+      size: FIELD_WIDTH,
+      position: 1,
+    },
+  ];
+  const client = {
+    metadata: async (query) => {
+      if (query.includes('getViews')) {
+        return {
+          getViews: [
+            {
+              id: 'all-companies-view',
+              name: 'All Companies',
+              type: 'TABLE',
+              position: 0,
+            },
+          ],
+        };
+      }
+
+      if (query.includes('getViewFields')) {
+        return { getViewFields: viewFields };
+      }
+
+      throw new Error(`Unexpected query: ${query}`);
+    },
+  };
+  const company = {
+    id: 'company-object',
+    nameSingular: 'company',
+    fieldsList: [
+      { id: 'name-field', name: 'name' },
+      { id: 'domain-field', name: 'domainName' },
+      { id: 'reference-name-field', name: 'referenceName' },
+    ],
+  };
+  const referenceNameDefinition = companyReferenceFieldDefinitions.find(
+    (field) => field.name === 'referenceName',
+  );
+
+  const actions = await planViewActions(client, company, [referenceNameDefinition], {
+    viewName: 'All Companies',
+    fallbackType: 'TABLE',
+    afterFieldNames: ['name'],
+  });
+
+  assert.deepEqual(actions, [
+    {
+      kind: 'update-view-field',
+      view: {
+        id: 'all-companies-view',
+        name: 'All Companies',
+        type: 'TABLE',
+        position: 0,
+      },
+      fieldName: 'domainName',
+      viewFieldId: 'domain-view-field',
+      update: { position: 2 },
+    },
+  ]);
+
+  const repairedViewFields = viewFields.map((viewField) => {
+    const action = actions.find(
+      (candidate) => candidate.viewFieldId === viewField.id,
+    );
+
+    return {
+      ...viewField,
+      ...(action?.update ?? {}),
+    };
+  });
+  const positions = repairedViewFields.map((viewField) => viewField.position);
+
+  assert.equal(new Set(positions).size, positions.length);
+});
+
 test('view field mutations use metadata GraphQL resolver input shapes', async () => {
   const calls = [];
   const client = {
@@ -451,7 +645,11 @@ test('view field mutations use metadata GraphQL resolver input shapes', async ()
   };
 
   await createViewField(client, 'view-id', 'field-id', 7);
-  await updateViewField(client, 'view-field-id', 8);
+  await updateViewField(client, 'view-field-id', {
+    isVisible: true,
+    size: FIELD_WIDTH,
+    position: 8,
+  });
 
   assert.match(calls[0].query, /mutation CreateViewField/);
   assert.deepEqual(calls[0].variables, {
@@ -474,6 +672,36 @@ test('view field mutations use metadata GraphQL resolver input shapes', async ()
       },
     },
   });
+});
+
+test('CRM login tokens expose and validate their workspace id', () => {
+  const loginToken = buildUnsignedLoginToken({ workspaceId: 'workspace-id' });
+
+  assert.equal(decodeLoginTokenWorkspaceId(loginToken), 'workspace-id');
+  assert.doesNotThrow(() =>
+    validateAdminConfig({
+      loginToken,
+      workspaceId: 'workspace-id',
+    }),
+  );
+});
+
+test('CRM login token workspace id must match CRM_WORKSPACE_ID when provided', () => {
+  assert.throws(
+    () =>
+      validateAdminConfig({
+        loginToken: buildUnsignedLoginToken({ workspaceId: 'workspace-id' }),
+        workspaceId: 'other-workspace-id',
+      }),
+    /does not match CRM_WORKSPACE_ID/,
+  );
+});
+
+test('CRM login tokens must include a workspace id', () => {
+  assert.throws(
+    () => decodeLoginTokenWorkspaceId(buildUnsignedLoginToken({})),
+    /workspaceId/,
+  );
 });
 
 function opportunityWithStageOptions(options) {

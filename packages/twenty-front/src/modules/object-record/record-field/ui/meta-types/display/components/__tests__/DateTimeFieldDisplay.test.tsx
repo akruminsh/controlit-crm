@@ -76,7 +76,7 @@ const renderDateTimeFieldDisplay = ({
 }: {
   fieldDefinition: FieldDefinition<FieldDateTimeMetadata>;
   fieldValue: string;
-  taskStatus: Task['status'];
+  taskStatus?: Task['status'];
   timeZone?: string;
 }) => {
   mockedUseDateTimeFieldDisplay.mockReturnValue({
@@ -142,6 +142,20 @@ describe('DateTimeFieldDisplay', () => {
       color: dangerColor,
     });
     expect(mockedUseRecordFieldValue).not.toHaveBeenCalled();
+  });
+
+  it('does not display overdue task due date values with danger color when status is not loaded', () => {
+    renderDateTimeFieldDisplay({
+      fieldDefinition: taskDueAtFieldDefinition,
+      fieldValue: '2020-01-01T10:00:00.000Z',
+      taskStatus: undefined,
+    });
+
+    expect(
+      screen.getByTestId('date-time-display').parentElement,
+    ).not.toHaveStyle({
+      color: dangerColor,
+    });
   });
 
   it('uses user timezone when checking whether task due date is overdue', () => {
