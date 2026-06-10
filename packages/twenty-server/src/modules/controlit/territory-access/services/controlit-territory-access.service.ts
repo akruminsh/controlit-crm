@@ -194,14 +194,13 @@ export class ControlitTerritoryAccessService {
     }
 
     if (methodName === CommonQueryNames.CREATE_ONE) {
-      this.validateCreateDataOrThrow(
+      return this.withCreateTerritoryOrThrow(
+        payload,
         objectName,
         territoryFieldName,
         scope,
         (payload as PayloadWithData).data,
       );
-
-      return payload;
     }
 
     if (SINGLE_RECORD_MUTATION_METHODS.has(methodName)) {
@@ -434,12 +433,13 @@ export class ControlitTerritoryAccessService {
     } as ObjectRecordFilter;
   }
 
-  private validateCreateDataOrThrow(
+  private withCreateTerritoryOrThrow(
+    payload: ResolverArgs,
     objectName: string,
     territoryFieldName: string,
     scope: ControlitTerritoryAccessScope,
     data: Record<string, unknown> | Record<string, unknown>[] | undefined,
-  ) {
+  ): ResolverArgs {
     if (!data || Array.isArray(data)) {
       this.throwPermissionDenied();
     }
@@ -448,7 +448,27 @@ export class ControlitTerritoryAccessService {
       this.throwPermissionDenied();
     }
 
-    this.validateTerritoryValueOrThrow(data, territoryFieldName, scope);
+    const territory = data[territoryFieldName];
+
+    if (territory !== undefined && territory !== null) {
+      this.validateTerritoryValueOrThrow(data, territoryFieldName, scope);
+
+      return payload;
+    }
+
+    const defaultTerritory = scope.territories[0];
+
+    if (!defaultTerritory) {
+      this.throwPermissionDenied();
+    }
+
+    return {
+      ...payload,
+      data: {
+        ...data,
+        [territoryFieldName]: defaultTerritory,
+      },
+    } as ResolverArgs;
   }
 
   private validateBulkMutationOrThrow(

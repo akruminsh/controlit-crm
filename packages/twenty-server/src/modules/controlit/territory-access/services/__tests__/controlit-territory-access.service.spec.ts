@@ -581,6 +581,61 @@ describe('ControlitTerritoryAccessService', () => {
     ).resolves.toBe(payload);
   });
 
+  it.each([
+    ['opportunity', 'projectCountry', { name: 'New roof project' }],
+    ['task', 'taskTerritory', { title: 'Call customer' }],
+  ])(
+    'defaults %s creates without a territory to the first assigned territory',
+    async (objectName, territoryFieldName, data) => {
+      const { service } = setup({
+        assignmentRows: [
+          {
+            territories: ['FINLAND', 'ESTONIA'],
+            canManageTerritory: false,
+          },
+        ],
+      });
+
+      await expect(
+        service.applyPreQueryHook(
+          authContext,
+          objectName,
+          CommonQueryNames.CREATE_ONE,
+          { data },
+        ),
+      ).resolves.toEqual({
+        data: {
+          ...data,
+          [territoryFieldName]: 'FINLAND',
+        },
+      });
+    },
+  );
+
+  it('blocks managers from creating opportunities when they have no assigned territories', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: [],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await expectPermissionDenied(
+      service.applyPreQueryHook(
+        authContext,
+        'opportunity',
+        CommonQueryNames.CREATE_ONE,
+        {
+          data: {
+            name: 'New roof project',
+          },
+        },
+      ),
+    );
+  });
+
   it('blocks managers from creating opportunities outside their territories', async () => {
     const { service } = setup({
       assignmentRows: [
