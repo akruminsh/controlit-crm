@@ -141,6 +141,7 @@ describe('DateTimeFieldDisplay', () => {
     ).not.toHaveStyle({
       color: dangerColor,
     });
+    expect(mockedUseRecordFieldValue).not.toHaveBeenCalled();
   });
 
   it('uses user timezone when checking whether task due date is overdue', () => {
