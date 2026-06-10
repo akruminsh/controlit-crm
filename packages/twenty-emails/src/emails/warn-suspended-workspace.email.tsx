@@ -51,13 +51,13 @@ export const WarnSuspendedWorkspaceEmail = ({
         <br />
         <br />
         <Trans
-          id="If you wish to continue using Twenty, please update your subscription within the next {remainingDays} {dayOrDays}."
+          id="If you wish to continue using Controlit Factory CRM, please update your subscription within the next {remainingDays} {dayOrDays}."
           values={{ remainingDays, dayOrDays }}
         />
       </MainText>
       <br />
       <CallToAction
-        href="https://app.twenty.com/settings/billing"
+        href="https://crm.controlitfactory.eu/settings/billing"
         value={i18n._('Update your subscription')}
       />
       <br />

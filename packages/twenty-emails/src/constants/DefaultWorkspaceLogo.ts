@@ -1,2 +1,2 @@
 export const DEFAULT_WORKSPACE_LOGO =
-  'https://twentyhq.github.io/placeholder-images/workspaces/twenty-logo.png';
+  'https://crm.controlitfactory.eu/images/controlit-icon.png';

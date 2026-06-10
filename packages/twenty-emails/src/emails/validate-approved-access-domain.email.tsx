@@ -80,18 +80,18 @@ export const SendApprovedAccessDomainValidation = ({
 };
 
 SendApprovedAccessDomainValidation.PreviewProps = {
-  link: 'https://app.twenty.com/validate-domain',
+  link: 'https://crm.controlitfactory.eu/validate-domain',
   domain: 'example.com',
   workspace: {
-    name: 'Acme Inc.',
-    logo: 'https://fakeimg.pl/200x200/?text=ACME&font=lobster',
+    name: 'Controlit Factory',
+    logo: 'https://crm.controlitfactory.eu/images/controlit-icon.png',
   },
   sender: {
     email: 'john.doe@example.com',
     firstName: 'John',
     lastName: 'Doe',
   },
-  serverUrl: 'https://app.twenty.com',
+  serverUrl: 'https://crm.controlitfactory.eu',
   locale: 'en',
 };
 

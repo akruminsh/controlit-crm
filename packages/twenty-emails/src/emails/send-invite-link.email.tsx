@@ -1,15 +1,11 @@
-import { Trans } from '@lingui/react';
 import { Img } from '@react-email/components';
-import { emailTheme } from 'src/common-style';
 
 import { BaseEmail } from 'src/components/BaseEmail';
 import { CallToAction } from 'src/components/CallToAction';
 import { HighlightedContainer } from 'src/components/HighlightedContainer';
 import { HighlightedText } from 'src/components/HighlightedText';
-import { Link } from 'src/components/Link';
 import { MainText } from 'src/components/MainText';
 import { Title } from 'src/components/Title';
-import { WhatIsTwenty } from 'src/components/WhatIsTwenty';
 import { capitalize } from 'src/utils/capitalize';
 import { createI18nInstance } from 'src/utils/i18n.utils';
 import { type APP_LOCALES } from 'twenty-shared/translations';
@@ -23,14 +19,48 @@ type SendInviteLinkEmailProps = {
     firstName: string;
     lastName: string;
   };
+  recipient: {
+    email: string;
+  };
   serverUrl: string;
   locale: keyof typeof APP_LOCALES;
+};
+
+const genericEmailLocalParts = new Set([
+  'admin',
+  'contact',
+  'crm',
+  'hello',
+  'info',
+  'mail',
+  'office',
+  'sales',
+  'support',
+  'team',
+]);
+
+const getRecipientFirstNameFromEmail = (email: string) => {
+  const localPart = email.split('@')[0]?.toLowerCase();
+
+  if (!localPart || genericEmailLocalParts.has(localPart)) {
+    return undefined;
+  }
+
+  const candidate = localPart
+    .split(/[._+-]/)
+    .find((part) => part.length > 1 && /[a-z]/.test(part));
+
+  if (!candidate || genericEmailLocalParts.has(candidate)) {
+    return undefined;
+  }
+
+  return capitalize(candidate.replace(/\d+$/g, ''));
 };
 
 export const SendInviteLinkEmail = ({
   link,
   workspace,
-  sender,
+  recipient,
   serverUrl,
   locale,
 }: SendInviteLinkEmailProps) => {
@@ -39,29 +69,27 @@ export const SendInviteLinkEmail = ({
     ? getImageAbsoluteURI({ imageUrl: workspace.logo, baseUrl: serverUrl })
     : null;
 
-  const senderName = capitalize(sender.firstName);
-  const senderEmail = sender.email;
-  const workspaceName = workspace.name;
+  const recipientFirstName = getRecipientFirstNameFromEmail(recipient.email);
+  const workspaceName = workspace.name ?? 'Controlit Factory';
 
   return (
     <BaseEmail width={333} locale={locale}>
-      <Title value={i18n._('Join your team on Twenty')} />
+      <Title value={i18n._('Your Controlit Factory CRM invitation')} />
       <MainText>
-        <Trans
-          id="{senderName} (<0>{senderEmail}</0>) has invited you to join a workspace called <1>{workspaceName}</1>."
-          values={{ senderName, senderEmail, workspaceName }}
-          components={{
-            0: (
-              <Link
-                href={`mailto:${senderEmail}`}
-                value={senderEmail}
-                color={emailTheme.font.colors.blue}
-              />
-            ),
-            1: <b />,
-          }}
-        />
-        <br />
+        {recipientFirstName ? `Hi ${recipientFirstName},` : 'Hi,'}
+      </MainText>
+      <MainText>
+        {`You have been invited to join ${workspaceName} in Controlit Factory CRM.`}
+      </MainText>
+      <MainText>
+        {i18n._(
+          'Use this secure invitation to create your account and access contacts, projects, and tasks according to your assigned permissions.',
+        )}
+      </MainText>
+      <MainText>
+        {i18n._(
+          'If you were not expecting this invitation, you can ignore this email.',
+        )}
       </MainText>
       <HighlightedContainer>
         {workspaceLogo ? (
@@ -75,21 +103,25 @@ export const SendInviteLinkEmail = ({
           <></>
         )}
         {workspace.name ? <HighlightedText value={workspace.name} /> : <></>}
-        <CallToAction href={link} value={i18n._('Accept invite')} />
+        <CallToAction href={link} value={i18n._('Accept invitation')} />
       </HighlightedContainer>
-      <WhatIsTwenty i18n={i18n} />
     </BaseEmail>
   );
 };
 
 SendInviteLinkEmail.PreviewProps = {
-  link: 'https://app.twenty.com/invite/123',
+  link: 'https://crm.controlitfactory.eu/invite/123',
   workspace: {
-    name: 'Acme Inc.',
-    logo: 'https://fakeimg.pl/200x200/?text=ACME&font=lobster',
+    name: 'Controlit Factory',
+    logo: 'https://crm.controlitfactory.eu/images/controlit-icon.png',
   },
-  sender: { email: 'john.doe@example.com', firstName: 'John', lastName: 'Doe' },
-  serverUrl: 'https://app.twenty.com',
+  sender: {
+    email: 'crm@controlitfactory.eu',
+    firstName: 'CRM',
+    lastName: 'Admin',
+  },
+  recipient: { email: 'aleksej.kruminsh@gmail.com' },
+  serverUrl: 'https://crm.controlitfactory.eu',
   locale: 'en',
 } as SendInviteLinkEmailProps;
 

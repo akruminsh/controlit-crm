@@ -18,45 +18,18 @@ export const Footer = ({ i18n }: FooterProps) => {
         <Column>
           <ShadowText>
             <Link
-              href="https://twenty.com/"
-              value={i18n._('Website')}
-              aria-label={i18n._("Visit Twenty's website")}
-            />
-          </ShadowText>
-        </Column>
-        <Column>
-          <ShadowText>
-            <Link
-              href="https://github.com/twentyhq/twenty"
-              value={i18n._('Github')}
-              aria-label={i18n._("Visit Twenty's GitHub repository")}
-            />
-          </ShadowText>
-        </Column>
-        <Column>
-          <ShadowText>
-            <Link
-              href="https://docs.twenty.com/getting-started/introduction"
-              value={i18n._('User guide')}
-              aria-label={i18n._("Read Twenty's user guide")}
-            />
-          </ShadowText>
-        </Column>
-        <Column>
-          <ShadowText>
-            <Link
-              href="https://docs.twenty.com/"
-              value={i18n._('Developers')}
-              aria-label={i18n._("Visit Twenty's developer documentation")}
+              href="https://crm.controlitfactory.eu"
+              value={i18n._('Controlit Factory CRM')}
+              aria-label={i18n._('Open Controlit Factory CRM')}
             />
           </ShadowText>
         </Column>
       </Row>
       <ShadowText>
         <>
-          {i18n._('Twenty.com, Public Benefit Corporation')}
+          {i18n._('This is an automated Controlit Factory CRM notification.')}
           <br />
-          {i18n._('San Francisco / Paris')}
+          {i18n._('Please do not share secure links from this email.')}
         </>
       </ShadowText>
     </Container>

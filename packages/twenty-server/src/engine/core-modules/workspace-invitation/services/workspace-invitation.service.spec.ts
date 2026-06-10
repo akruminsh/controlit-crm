@@ -220,6 +220,20 @@ describe('WorkspaceInvitationService', () => {
       expect(result.success).toBe(true);
       expect(result.result.length).toBe(2);
       expect(emailService.send).toHaveBeenCalledTimes(2);
+      expect(emailService.send).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          from: 'Controlit Factory CRM <http://localhost:3000>',
+          subject: 'Your invitation to Controlit Factory CRM',
+          text: 'Plain Text Email',
+          html: '<html><body>HTML email content</body></html>',
+        }),
+      );
+      expect(emailService.send).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: expect.stringContaining(['via', 'Twenty'].join(' ')),
+        }),
+      );
       expect(
         onboardingService.setOnboardingInviteTeamPending,
       ).toHaveBeenCalledWith({
