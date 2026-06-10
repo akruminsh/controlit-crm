@@ -6,12 +6,16 @@ import test from 'node:test';
 import {
   buildOptionsWithStableIds,
   companyReferenceFieldDefinitions,
+  createViewField,
+  FIELD_WIDTH,
   main,
   normalizeOptions,
   planObjectFieldActions,
   planProjectStageActions,
   planSelectOptionUpdate,
+  planViewActions,
   taskCategoryFieldDefinition,
+  updateViewField,
 } from './setup-controlit-crm-enhancements.mjs';
 
 test('buildOptionsWithStableIds preserves existing option ids and appends new options', () => {
@@ -354,6 +358,122 @@ test('planObjectFieldActions rejects existing fields with conflicting types', ()
     () => planObjectFieldActions(company, [referenceNameDefinition]),
     /Field referenceName exists with type NUMBER; expected TEXT/,
   );
+});
+
+test('planViewActions uses metadata GraphQL and is idempotent after partial apply', async () => {
+  const calls = [];
+  const client = {
+    metadata: async (query, variables) => {
+      calls.push({ query, variables });
+
+      if (query.includes('getViews')) {
+        return {
+          getViews: [
+            {
+              id: 'all-companies-view',
+              name: 'All Companies',
+              type: 'TABLE',
+              position: 0,
+            },
+          ],
+        };
+      }
+
+      if (query.includes('getViewFields')) {
+        return {
+          getViewFields: [
+            {
+              id: 'name-view-field',
+              fieldMetadataId: 'name-field',
+              isVisible: true,
+              size: FIELD_WIDTH,
+              position: 0,
+            },
+            {
+              id: 'reference-name-view-field',
+              fieldMetadataId: 'reference-name-field',
+              isVisible: true,
+              size: FIELD_WIDTH,
+              position: 1,
+            },
+          ],
+        };
+      }
+
+      throw new Error(`Unexpected query: ${query}`);
+    },
+    rest: async () => {
+      throw new Error('REST should not be used for metadata views.');
+    },
+  };
+  const company = {
+    id: 'company-object',
+    nameSingular: 'company',
+    fieldsList: [
+      { id: 'name-field', name: 'name' },
+      { id: 'reference-name-field', name: 'referenceName' },
+    ],
+  };
+  const referenceNameDefinition = companyReferenceFieldDefinitions.find(
+    (field) => field.name === 'referenceName',
+  );
+
+  const actions = await planViewActions(client, company, [referenceNameDefinition], {
+    viewName: 'All Companies',
+    fallbackType: 'TABLE',
+    afterFieldNames: ['name'],
+  });
+
+  assert.deepEqual(actions, []);
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].query, /query GetViews/);
+  assert.deepEqual(calls[0].variables, { objectMetadataId: 'company-object' });
+  assert.match(calls[1].query, /query GetViewFields/);
+  assert.deepEqual(calls[1].variables, { viewId: 'all-companies-view' });
+});
+
+test('view field mutations use metadata GraphQL resolver input shapes', async () => {
+  const calls = [];
+  const client = {
+    metadata: async (query, variables) => {
+      calls.push({ query, variables });
+
+      if (query.includes('createViewField')) {
+        return { createViewField: { id: 'created-view-field' } };
+      }
+
+      if (query.includes('updateViewField')) {
+        return { updateViewField: { id: 'updated-view-field' } };
+      }
+
+      throw new Error(`Unexpected query: ${query}`);
+    },
+  };
+
+  await createViewField(client, 'view-id', 'field-id', 7);
+  await updateViewField(client, 'view-field-id', 8);
+
+  assert.match(calls[0].query, /mutation CreateViewField/);
+  assert.deepEqual(calls[0].variables, {
+    input: {
+      fieldMetadataId: 'field-id',
+      viewId: 'view-id',
+      isVisible: true,
+      size: FIELD_WIDTH,
+      position: 7,
+    },
+  });
+  assert.match(calls[1].query, /mutation UpdateViewField/);
+  assert.deepEqual(calls[1].variables, {
+    input: {
+      id: 'view-field-id',
+      update: {
+        isVisible: true,
+        size: FIELD_WIDTH,
+        position: 8,
+      },
+    },
+  });
 });
 
 function opportunityWithStageOptions(options) {

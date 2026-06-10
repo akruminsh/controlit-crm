@@ -465,11 +465,8 @@ async function updateField(client, id, update) {
   );
 }
 
-async function planViewActions(client, object, definitions, config) {
-  const views = await client.rest(
-    'GET',
-    `/rest/metadata/views?objectMetadataId=${encodeURIComponent(object.id)}`,
-  );
+export async function planViewActions(client, object, definitions, config) {
+  const views = await getViews(client, object.id);
   const view =
     views.find((candidate) => candidate.name === config.viewName) ??
     views.find(
@@ -486,10 +483,7 @@ async function planViewActions(client, object, definitions, config) {
   }
 
   const fieldsByName = mapByName(object.fieldsList);
-  const viewFields = await client.rest(
-    'GET',
-    `/rest/metadata/viewFields?viewId=${encodeURIComponent(view.id)}`,
-  );
+  const viewFields = await getViewFields(client, view.id);
   const viewFieldsByFieldId = new Map(
     viewFields.map((viewField) => [viewField.fieldMetadataId, viewField]),
   );
@@ -540,6 +534,43 @@ async function planViewActions(client, object, definitions, config) {
   return actions;
 }
 
+async function getViews(client, objectMetadataId) {
+  const data = await client.metadata(
+    `
+      query GetViews($objectMetadataId: String) {
+        getViews(objectMetadataId: $objectMetadataId) {
+          id
+          name
+          type
+          position
+        }
+      }
+    `,
+    { objectMetadataId },
+  );
+
+  return data.getViews;
+}
+
+async function getViewFields(client, viewId) {
+  const data = await client.metadata(
+    `
+      query GetViewFields($viewId: String!) {
+        getViewFields(viewId: $viewId) {
+          id
+          fieldMetadataId
+          isVisible
+          size
+          position
+        }
+      }
+    `,
+    { viewId },
+  );
+
+  return data.getViewFields;
+}
+
 function resolveBasePosition(
   viewFields,
   viewFieldsByFieldId,
@@ -558,26 +589,59 @@ function resolveBasePosition(
   return maxPosition(viewFields);
 }
 
-async function createViewField(client, viewId, fieldMetadataId, position) {
-  return client.rest('POST', '/rest/metadata/viewFields', {
-    fieldMetadataId,
-    viewId,
-    isVisible: true,
-    size: FIELD_WIDTH,
-    position,
-  });
-}
-
-async function updateViewField(client, viewFieldId, position) {
-  return client.rest(
-    'PATCH',
-    `/rest/metadata/viewFields/${encodeURIComponent(viewFieldId)}`,
+export async function createViewField(client, viewId, fieldMetadataId, position) {
+  const data = await client.metadata(
+    `
+      mutation CreateViewField($input: CreateViewFieldInput!) {
+        createViewField(input: $input) {
+          id
+          fieldMetadataId
+          isVisible
+          size
+          position
+        }
+      }
+    `,
     {
-      isVisible: true,
-      size: FIELD_WIDTH,
-      position,
+      input: {
+        fieldMetadataId,
+        viewId,
+        isVisible: true,
+        size: FIELD_WIDTH,
+        position,
+      },
     },
   );
+
+  return data.createViewField;
+}
+
+export async function updateViewField(client, viewFieldId, position) {
+  const data = await client.metadata(
+    `
+      mutation UpdateViewField($input: UpdateViewFieldInput!) {
+        updateViewField(input: $input) {
+          id
+          fieldMetadataId
+          isVisible
+          size
+          position
+        }
+      }
+    `,
+    {
+      input: {
+        id: viewFieldId,
+        update: {
+          isVisible: true,
+          size: FIELD_WIDTH,
+          position,
+        },
+      },
+    },
+  );
+
+  return data.updateViewField;
 }
 
 function selectField(name, label, icon, optionTuples) {
