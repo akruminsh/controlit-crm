@@ -19,12 +19,19 @@ const parseDueAtPlainDate = (
   }
 };
 
-export const isTaskDueAtOverdue = (
-  dueAt: string | null | undefined,
-  status: string | null | undefined,
-  now: Temporal.Instant = Temporal.Now.instant(),
+type IsTaskDueAtOverdueParams = {
+  dueAt: string | null | undefined;
+  status: string | null | undefined;
+  now?: Temporal.Instant;
+  timeZone?: string;
+};
+
+export const isTaskDueAtOverdue = ({
+  dueAt,
+  status,
+  now = Temporal.Now.instant(),
   timeZone = 'UTC',
-) => {
+}: IsTaskDueAtOverdueParams) => {
   if (status === 'DONE') {
     return false;
   }
