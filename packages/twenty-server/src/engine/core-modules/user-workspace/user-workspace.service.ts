@@ -164,7 +164,7 @@ export class UserWorkspaceService extends TypeOrmQueryService<UserWorkspaceEntit
         colorScheme: 'System',
         userId: user.id,
         userEmail: user.email,
-        avatarUrl: userWorkspace.defaultAvatarUrl ?? null,
+        avatarUrl: userWorkspace.defaultAvatarUrl ?? '',
         locale: (user.locale ?? SOURCE_LOCALE) as keyof typeof APP_LOCALES,
       });
 

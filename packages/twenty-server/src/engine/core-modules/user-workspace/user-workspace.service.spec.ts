@@ -300,6 +300,53 @@ describe('UserWorkspaceService', () => {
         avatarUrl: 'userWorkspace-avatar-url',
       });
     });
+
+    it('should create a workspace member with an empty avatar URL when no default avatar is available', async () => {
+      const workspaceId = 'workspace-id';
+      const user = {
+        id: 'user-id',
+        email: 'test@example.com',
+        firstName: '',
+        lastName: '',
+        locale: 'en',
+        isEmailVerified: false,
+        disabled: false,
+        canImpersonate: false,
+        canAccessFullAdminPanel: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+        deletedAt: null,
+      } as unknown as AuthContextUser;
+      const workspaceMember = [
+        {
+          id: 'workspace-member-id',
+          nameFirstName: '',
+          nameLastName: '',
+          userId: 'user-id',
+          userEmail: 'test@example.com',
+        },
+      ];
+      const workspaceMemberRepository = {
+        insert: jest.fn(),
+        find: jest.fn().mockResolvedValue(workspaceMember),
+      };
+
+      jest
+        .spyOn(globalWorkspaceOrmManager, 'getRepository')
+        .mockResolvedValue(workspaceMemberRepository as any);
+
+      jest.spyOn(userWorkspaceRepository, 'findOneOrFail').mockResolvedValue({
+        defaultAvatarUrl: undefined,
+      } as unknown as UserWorkspaceEntity);
+
+      await service.createWorkspaceMember(workspaceId, user);
+
+      expect(workspaceMemberRepository.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          avatarUrl: '',
+        }),
+      );
+    });
   });
 
   describe('addUserToWorkspaceIfUserNotInWorkspace', () => {

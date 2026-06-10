@@ -62,7 +62,7 @@ export const SignInUpPasswordField = ({
             />
             {signInUpMode === SignInUpMode.SignUp && (
               <StyledText
-                text={t`At least 8 characters long.`}
+                text={t`Create a new password for your Controlit Factory CRM account. At least 8 characters long.`}
                 color={theme.font.color.secondary}
               />
             )}

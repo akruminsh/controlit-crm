@@ -70,7 +70,6 @@ export const SendInviteLinkEmail = ({
     : null;
 
   const recipientFirstName = getRecipientFirstNameFromEmail(recipient.email);
-  const workspaceName = workspace.name ?? 'Controlit Factory';
 
   return (
     <BaseEmail width={333} locale={locale}>
@@ -79,11 +78,16 @@ export const SendInviteLinkEmail = ({
         {recipientFirstName ? `Hi ${recipientFirstName},` : 'Hi,'}
       </MainText>
       <MainText>
-        {`You have been invited to join ${workspaceName} in Controlit Factory CRM.`}
+        {i18n._('You have been invited to join Controlit Factory CRM.')}
       </MainText>
       <MainText>
         {i18n._(
-          'Use this secure invitation to create your account and access contacts, projects, and tasks according to your assigned permissions.',
+          'Click the button below, then create a new password on the sign-up screen. The password is not included in this email or invitation link.',
+        )}
+      </MainText>
+      <MainText>
+        {i18n._(
+          'After sign-up, you will have access to contacts, projects, and tasks according to your assigned permissions.',
         )}
       </MainText>
       <MainText>
