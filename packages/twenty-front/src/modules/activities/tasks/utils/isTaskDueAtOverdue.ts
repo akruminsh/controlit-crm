@@ -1,4 +1,7 @@
+import { type Task } from '@/activities/types/Task';
 import { Temporal } from 'temporal-polyfill';
+
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 const parseDueAtPlainDate = (
   dueAt: string,
@@ -12,6 +15,10 @@ const parseDueAtPlainDate = (
     //
   }
 
+  if (!DATE_ONLY_REGEX.test(dueAt)) {
+    return null;
+  }
+
   try {
     return Temporal.PlainDate.from(dueAt);
   } catch {
@@ -21,7 +28,7 @@ const parseDueAtPlainDate = (
 
 type IsTaskDueAtOverdueParams = {
   dueAt: string | null | undefined;
-  status: string | null | undefined;
+  status: Task['status'] | undefined;
   now?: Temporal.Instant;
   timeZone?: string;
 };

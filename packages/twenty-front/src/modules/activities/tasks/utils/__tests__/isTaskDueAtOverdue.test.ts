@@ -63,4 +63,14 @@ describe('isTaskDueAtOverdue', () => {
       isTaskDueAtOverdue({ dueAt: 'not-a-date', status: 'TODO', now }),
     ).toBe(false);
   });
+
+  it('returns false for offsetless ISO datetimes', () => {
+    expect(
+      isTaskDueAtOverdue({
+        dueAt: '2024-04-01T23:30:00',
+        status: 'TODO',
+        now,
+      }),
+    ).toBe(false);
+  });
 });
