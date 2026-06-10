@@ -6,6 +6,7 @@ import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldCont
 import { useDateTimeFieldDisplay } from '@/object-record/record-field/ui/meta-types/hooks/useDateTimeFieldDisplay';
 import { useRecordFieldValue } from '@/object-record/record-store/hooks/useRecordFieldValue';
 import { DateTimeDisplay } from '@/ui/field/display/components/DateTimeDisplay';
+import { UserContext } from '@/users/contexts/UserContext';
 import { themeCssVariables } from 'twenty-ui-deprecated/theme-constants';
 
 const overdueTaskDueAtStyle = {
@@ -15,6 +16,7 @@ const overdueTaskDueAtStyle = {
 export const DateTimeFieldDisplay = () => {
   const { fieldValue, fieldDefinition } = useDateTimeFieldDisplay();
   const { recordId } = useContext(FieldContext);
+  const { timeZone } = useContext(UserContext);
 
   const dateFieldSettings = fieldDefinition.metadata?.settings;
   const taskStatus = useRecordFieldValue<Task['status']>(
@@ -30,6 +32,7 @@ export const DateTimeFieldDisplay = () => {
     isTaskDueAtOverdue({
       dueAt: fieldValue,
       status: taskStatus,
+      timeZone,
     });
 
   return (
