@@ -74,7 +74,7 @@ export const SendInviteLinkEmail = ({
 
   return (
     <BaseEmail width={333} locale={locale}>
-      <Title value={i18n._('Your Controlit Factory CRM invitation')} />
+      <Title value={i18n._('Accept invitation to Controlit Factory CRM')} />
       <MainText>
         {recipientFirstName ? `Hi ${recipientFirstName},` : 'Hi,'}
       </MainText>
