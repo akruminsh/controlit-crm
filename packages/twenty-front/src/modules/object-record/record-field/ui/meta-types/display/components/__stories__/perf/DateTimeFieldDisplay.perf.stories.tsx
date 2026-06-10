@@ -42,6 +42,13 @@ type Story = StoryObj<typeof DateTimeFieldDisplay>;
 
 export const Default: Story = {};
 
+export const OverdueTaskDueAt: Story = {
+  decorators: [getFieldDecorator('task', 'dueAt', '2020-01-01T10:00:00.000Z')],
+  parameters: {
+    chromatic: { disableSnapshot: false },
+  },
+};
+
 export const Elipsis: Story = {
   parameters: {
     container: { width: 50 },
