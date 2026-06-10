@@ -30,6 +30,7 @@ export function loadConfig() {
     baseUrl: trimTrailingSlash(process.env.CRM_BASE_URL ?? DEFAULT_BASE_URL),
     adminEmail: process.env.CRM_ADMIN_EMAIL,
     adminPassword: process.env.CRM_ADMIN_PASSWORD,
+    loginToken: process.env.CRM_LOGIN_TOKEN,
     workspaceId: process.env.CRM_WORKSPACE_ID,
     backupDir: resolve(process.env.CRM_BACKUP_DIR ?? DEFAULT_BACKUP_DIR),
     sshHost: process.env.CRM_SSH_HOST ?? DEFAULT_SSH_HOST,
@@ -41,6 +42,10 @@ export function loadConfig() {
 }
 
 export function validateAdminConfig(config) {
+  if (config.loginToken) {
+    return;
+  }
+
   const missing = [];
 
   if (!config.adminEmail) {
@@ -59,35 +64,50 @@ export function validateAdminConfig(config) {
 export async function createCrmClient(config) {
   validateAdminConfig(config);
 
-  const signInData = await metadataRequest(config, {
-    query: `
-      mutation SignIn($email: String!, $password: String!) {
-        signIn(email: $email, password: $password) {
-          availableWorkspaces {
-            availableWorkspacesForSignIn {
-              id
-              displayName
-              loginToken
-              workspaceUrls {
-                customUrl
-                subdomainUrl
+  let workspace;
+
+  if (config.loginToken) {
+    workspace = {
+      id: config.workspaceId ?? 'workspace-from-login-token',
+      displayName: config.workspaceId ?? 'Workspace from CRM_LOGIN_TOKEN',
+      loginToken: config.loginToken,
+      workspaceUrls: {
+        customUrl: config.baseUrl,
+        subdomainUrl: null,
+      },
+    };
+  } else {
+    const signInData = await metadataRequest(config, {
+      query: `
+        mutation SignIn($email: String!, $password: String!) {
+          signIn(email: $email, password: $password) {
+            availableWorkspaces {
+              availableWorkspacesForSignIn {
+                id
+                displayName
+                loginToken
+                workspaceUrls {
+                  customUrl
+                  subdomainUrl
+                }
               }
             }
           }
         }
-      }
-    `,
-    variables: {
-      email: config.adminEmail,
-      password: config.adminPassword,
-    },
-  });
+      `,
+      variables: {
+        email: config.adminEmail,
+        password: config.adminPassword,
+      },
+    });
 
-  const workspaces =
-    signInData.signIn.availableWorkspaces.availableWorkspacesForSignIn;
-  const workspace = config.workspaceId
-    ? workspaces.find((candidate) => candidate.id === config.workspaceId)
-    : workspaces[0];
+    const workspaces =
+      signInData.signIn.availableWorkspaces.availableWorkspacesForSignIn;
+
+    workspace = config.workspaceId
+      ? workspaces.find((candidate) => candidate.id === config.workspaceId)
+      : workspaces[0];
+  }
 
   if (!workspace) {
     throw new Error(`Workspace not found for CRM_WORKSPACE_ID=${config.workspaceId}`);
