@@ -1,5 +1,5 @@
 import { AppErrorBoundaryEffect } from '@/error-handler/components/internal/AppErrorBoundaryEffect';
-import { checkIfItsAViteStaleChunkLazyLoadingError } from '@/error-handler/utils/checkIfItsAViteStaleChunkLazyLoadingError';
+import { reloadPageOnViteStaleChunkLazyLoadingError } from '@/error-handler/utils/checkIfItsAViteStaleChunkLazyLoadingError';
 import { type ErrorInfo, type ReactNode } from 'react';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { type CustomError, isDefined } from 'twenty-shared/utils';
@@ -22,6 +22,13 @@ export const AppErrorBoundary = ({
   resetOnLocationChange = true,
 }: AppErrorBoundaryProps) => {
   const handleError = async (error: Error | CustomError, info: ErrorInfo) => {
+    const isViteStaleChunkLazyLoadingError =
+      reloadPageOnViteStaleChunkLazyLoadingError(error);
+
+    if (isViteStaleChunkLazyLoadingError) {
+      return;
+    }
+
     try {
       const { captureException } = await import('@sentry/react');
       captureException(error, (scope) => {
@@ -35,13 +42,6 @@ export const AppErrorBoundary = ({
     } catch (sentryError) {
       // oxlint-disable-next-line no-console
       console.error('Failed to capture exception with Sentry:', sentryError);
-    }
-
-    const isViteStaleChunkLazyLoadingError =
-      checkIfItsAViteStaleChunkLazyLoadingError(error);
-
-    if (isViteStaleChunkLazyLoadingError) {
-      window.location.reload();
     }
   };
 

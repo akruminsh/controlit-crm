@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 
+import { reloadPageOnViteStaleChunkLazyLoadingError } from '@/error-handler/utils/checkIfItsAViteStaleChunkLazyLoadingError';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import {
   CombinedGraphQLErrors,
@@ -33,6 +34,14 @@ export const PromiseRejectionEffect = () => {
   const handlePromiseRejection = useCallback(
     async (event: PromiseRejectionEvent) => {
       const error = event.reason;
+      const isViteStaleChunkLazyLoadingError =
+        reloadPageOnViteStaleChunkLazyLoadingError(error);
+
+      if (isViteStaleChunkLazyLoadingError) {
+        event.preventDefault();
+        return;
+      }
+
       if (isApolloError(error)) {
         enqueueErrorSnackBar({
           apolloError: error,
