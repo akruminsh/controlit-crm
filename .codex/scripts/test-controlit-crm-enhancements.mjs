@@ -6,6 +6,7 @@ import test from 'node:test';
 import {
   buildOptionsWithStableIds,
   companyReferenceFieldDefinitions,
+  main,
   normalizeOptions,
   planObjectFieldActions,
   planProjectStageActions,
@@ -146,6 +147,18 @@ test('metadata definitions use stable API names', () => {
   );
 });
 
+test('main requires explicit workspace id for apply mode before CRM login', async () => {
+  await assert.rejects(
+    () =>
+      main({
+        config: {},
+        isDryRun: false,
+        ensureBackup: async () => {},
+      }),
+    /CRM_WORKSPACE_ID is required for --apply/,
+  );
+});
+
 test('planProjectStageActions appends declined stage while preserving existing option ids', () => {
   const actions = planProjectStageActions(
     opportunityWithStageOptions([
@@ -263,6 +276,7 @@ test('planObjectFieldActions plans existing field updates', () => {
         type: 'SELECT',
         label: 'Old task category',
         icon: 'IconOld',
+        isActive: true,
         options: [
           {
             id: 'project-option-id',
@@ -289,6 +303,33 @@ test('planObjectFieldActions plans existing field updates', () => {
   );
   assert.equal(actions[0].update.options[0].id, 'project-option-id');
   assert.equal(actions[0].update.options[0].color, 'blue');
+});
+
+test('planObjectFieldActions reactivates inactive existing fields', () => {
+  const company = {
+    id: 'company-object',
+    nameSingular: 'company',
+    fieldsList: [
+      {
+        id: 'reference-name-field',
+        name: 'referenceName',
+        type: 'TEXT',
+        label: 'Reference name',
+        icon: 'IconTag',
+        isActive: false,
+      },
+    ],
+  };
+  const referenceNameDefinition = companyReferenceFieldDefinitions.find(
+    (field) => field.name === 'referenceName',
+  );
+
+  const actions = planObjectFieldActions(company, [referenceNameDefinition]);
+
+  assert.equal(actions.length, 1);
+  assert.equal(actions[0].kind, 'update-field');
+  assert.equal(actions[0].fieldName, 'referenceName');
+  assert.deepEqual(actions[0].update, { isActive: true });
 });
 
 test('planObjectFieldActions rejects existing fields with conflicting types', () => {

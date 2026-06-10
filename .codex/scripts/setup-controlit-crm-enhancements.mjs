@@ -66,6 +66,10 @@ if (isRunningAsCli) {
 }
 
 export async function main({ config, isDryRun, ensureBackup }) {
+  if (!isDryRun && !config.workspaceId) {
+    throw new Error('CRM_WORKSPACE_ID is required for --apply.');
+  }
+
   const client = await createCrmClient(config);
   const metadata = await fetchMetadata(client);
 
@@ -355,6 +359,10 @@ function planFieldUpdate(existingField, definition) {
 
   if (existingField.icon !== definition.icon) {
     update.icon = definition.icon;
+  }
+
+  if (existingField.isActive !== true) {
+    update.isActive = true;
   }
 
   if (definition.options) {
