@@ -4,13 +4,8 @@ import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { styled } from '@linaria/react';
 import { useLingui } from '@lingui/react/macro';
 import { motion } from 'framer-motion';
-import { useContext } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
-import { StyledText } from 'twenty-ui-deprecated/display';
-import {
-  ThemeContext,
-  themeCssVariables,
-} from 'twenty-ui-deprecated/theme-constants';
+import { themeCssVariables } from 'twenty-ui-deprecated/theme-constants';
 
 const StyledFullWidthMotionDiv = styled(motion.div)`
   width: 100%;
@@ -20,6 +15,16 @@ const StyledInputContainer = styled.div`
   margin-bottom: ${themeCssVariables.spacing[3]};
 `;
 
+const StyledPasswordHint = styled.div`
+  color: ${themeCssVariables.font.color.secondary};
+  font-size: ${themeCssVariables.font.size.sm};
+  font-weight: ${themeCssVariables.font.weight.regular};
+  max-width: 100%;
+  overflow-wrap: break-word;
+  padding: ${themeCssVariables.spacing[2]} 0;
+  white-space: normal;
+`;
+
 export const SignInUpPasswordField = ({
   showErrors,
   signInUpMode,
@@ -27,7 +32,6 @@ export const SignInUpPasswordField = ({
   showErrors: boolean;
   signInUpMode: SignInUpMode;
 }) => {
-  const { theme } = useContext(ThemeContext);
   const { t } = useLingui();
   const form = useFormContext<Form>();
 
@@ -61,10 +65,9 @@ export const SignInUpPasswordField = ({
               fullWidth
             />
             {signInUpMode === SignInUpMode.SignUp && (
-              <StyledText
-                text={t`Create a new password for your Controlit Factory CRM account. At least 8 characters long.`}
-                color={theme.font.color.secondary}
-              />
+              <StyledPasswordHint>
+                {t`Create a new password for your Controlit Factory CRM account. At least 8 characters long.`}
+              </StyledPasswordHint>
             )}
           </StyledInputContainer>
         )}
