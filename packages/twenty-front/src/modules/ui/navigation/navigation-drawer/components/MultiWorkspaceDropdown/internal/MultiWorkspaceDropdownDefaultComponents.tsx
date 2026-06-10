@@ -56,6 +56,9 @@ const StyledDescription = styled.div`
   padding-left: ${themeCssVariables.spacing[1]};
 `;
 
+const getWorkspaceLogo = (logo?: string | null) =>
+  isNonEmptyString(logo) ? logo : DEFAULT_WORKSPACE_LOGO;
+
 export const MultiWorkspaceDropdownDefaultComponents = () => {
   const currentWorkspace = useAtomStateValue(currentWorkspaceState);
   const { t } = useLingui();
@@ -122,7 +125,7 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
             Avatar={
               <Avatar
                 placeholder={currentWorkspace?.displayName || ''}
-                avatarUrl={currentWorkspace?.logo ?? DEFAULT_WORKSPACE_LOGO}
+                avatarUrl={getWorkspaceLogo(currentWorkspace?.logo)}
               />
             }
           />
@@ -183,9 +186,7 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
                     avatar={
                       <Avatar
                         placeholder={availableWorkspace.displayName || ''}
-                        avatarUrl={
-                          availableWorkspace.logo ?? DEFAULT_WORKSPACE_LOGO
-                        }
+                        avatarUrl={getWorkspaceLogo(availableWorkspace.logo)}
                       />
                     }
                     selected={false}
