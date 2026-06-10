@@ -65,7 +65,7 @@ const StandardContent = ({
     <ModalContent isVerticallyCentered isHorizontallyCentered>
       <AnimatedEaseIn>
         <Logo
-          secondaryLogo={workspacePublicData?.logo}
+          primaryLogo={workspacePublicData?.logo}
           placeholder={workspacePublicData?.displayName}
           onClick={onClickOnLogo}
         />

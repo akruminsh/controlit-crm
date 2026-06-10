@@ -410,6 +410,8 @@ export class WorkspaceResolver {
           workspaceId: workspace.id,
           fileFolder: FileFolder.CorePicture,
         });
+      } else {
+        workspaceLogoWithToken = workspace.logo ?? '';
       }
 
       return {
