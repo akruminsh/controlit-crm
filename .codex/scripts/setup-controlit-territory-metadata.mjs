@@ -27,6 +27,9 @@ const TERRITORY_OPTIONS = [
   ['MENA region', 'MENA', 'purple'],
   ['Australia', 'AUSTRALIA', 'blue'],
   ['New Zealand', 'NEW_ZEALAND', 'green'],
+  ['United Kingdom', 'UNITED_KINGDOM', 'blue'],
+  ['Kuwait', 'KUWAIT', 'orange'],
+  ['Sweden', 'SWEDEN', 'yellow'],
 ];
 
 const FIELD_DEFINITIONS = [

@@ -36,6 +36,9 @@ const fieldDefinitions = [
     ['MENA region', 'MENA', 'purple'],
     ['Australia', 'AUSTRALIA', 'blue'],
     ['New Zealand', 'NEW_ZEALAND', 'green'],
+    ['United Kingdom', 'UNITED_KINGDOM', 'blue'],
+    ['Kuwait', 'KUWAIT', 'orange'],
+    ['Sweden', 'SWEDEN', 'yellow'],
   ]),
   selectField('membraneType', 'Membrane type', 'IconLayersIntersect', [
     ['PVC', 'PVC', 'green'],

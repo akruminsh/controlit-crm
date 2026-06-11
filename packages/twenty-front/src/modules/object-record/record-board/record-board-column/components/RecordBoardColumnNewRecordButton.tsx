@@ -51,6 +51,10 @@ export const RecordBoardColumnNewRecordButton = () => {
     objectMetadataItem: objectMetadataItem,
   });
 
+  if (objectMetadataItem.nameSingular === 'opportunity') {
+    return null;
+  }
+
   if (!hasObjectUpdatePermissions) {
     return null;
   }

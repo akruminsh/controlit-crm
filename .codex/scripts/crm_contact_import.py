@@ -51,6 +51,9 @@ COUNTRY_OPTIONS = [
     ("MENA region", "MENA", "purple"),
     ("Australia", "AUSTRALIA", "blue"),
     ("New Zealand", "NEW_ZEALAND", "green"),
+    ("United Kingdom", "UNITED_KINGDOM", "blue"),
+    ("Kuwait", "KUWAIT", "orange"),
+    ("Sweden", "SWEDEN", "yellow"),
 ]
 COUNTRY_VALUE_ALIASES = {
     "uae": "UNITED_ARAB_EMIRATES",
@@ -64,6 +67,12 @@ COUNTRY_VALUE_ALIASES = {
     "uae united arab emirates": "UNITED_ARAB_EMIRATES",
     "new zealand": "NEW_ZEALAND",
     "nz": "NEW_ZEALAND",
+    "uk": "UNITED_KINGDOM",
+    "u k": "UNITED_KINGDOM",
+    "united kingdom": "UNITED_KINGDOM",
+    "great britain": "UNITED_KINGDOM",
+    "kuwait": "KUWAIT",
+    "sweden": "SWEDEN",
 }
 PILOT_COMPANY_KEYS = {"yit", "sensor innovation", "dayone"}
 

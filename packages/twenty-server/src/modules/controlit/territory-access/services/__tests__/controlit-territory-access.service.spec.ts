@@ -275,6 +275,9 @@ describe('ControlitTerritoryAccessService', () => {
             'MENA',
             'AUSTRALIA',
             'NEW_ZEALAND',
+            'UNITED_KINGDOM',
+            'KUWAIT',
+            'SWEDEN',
           ],
           canManageTerritory: false,
         },
@@ -294,7 +297,16 @@ describe('ControlitTerritoryAccessService', () => {
           { name: { ilike: '%partner%' } },
           {
             companyCountry: {
-              in: ['CZECHIA', 'SLOVAKIA', 'MENA', 'AUSTRALIA', 'NEW_ZEALAND'],
+              in: [
+                'CZECHIA',
+                'SLOVAKIA',
+                'MENA',
+                'AUSTRALIA',
+                'NEW_ZEALAND',
+                'UNITED_KINGDOM',
+                'KUWAIT',
+                'SWEDEN',
+              ],
             },
           },
         ],

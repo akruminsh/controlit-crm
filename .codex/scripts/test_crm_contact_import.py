@@ -76,6 +76,9 @@ class CrmContactImportTests(unittest.TestCase):
         self.assertEqual(country_value("MENA"), "MENA")
         self.assertEqual(country_value("Middle East & North Africa"), "MENA")
         self.assertEqual(country_value("NZ"), "NEW_ZEALAND")
+        self.assertEqual(country_value("UK"), "UNITED_KINGDOM")
+        self.assertEqual(country_value("Kuwait"), "KUWAIT")
+        self.assertEqual(country_value("Sweden"), "SWEDEN")
 
     def test_source_company_payload_sets_canonical_non_baltic_territory(self):
         payload = source_company_payload(
