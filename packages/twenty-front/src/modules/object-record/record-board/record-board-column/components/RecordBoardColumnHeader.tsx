@@ -19,6 +19,7 @@ import { useToggleDropdown } from '@/ui/layout/dropdown/hooks/useToggleDropdown'
 import { useAtomComponentFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentFamilyStateValue';
 import { useAtomComponentSelectorValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentSelectorValue';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
+import { t } from '@lingui/core/macro';
 import { Tag } from 'twenty-ui-deprecated/components';
 import { IconDotsVertical, IconPlus } from 'twenty-ui-deprecated/display';
 import { LightIconButton } from 'twenty-ui-deprecated/input';
@@ -93,7 +94,8 @@ export const RecordBoardColumnHeader = () => {
 
   const hasObjectUpdatePermissions = objectPermissions.canUpdateObjectRecords;
   const canCreateRecordFromColumn =
-    objectMetadataItem.nameSingular !== 'opportunity';
+    objectMetadataItem.nameSingular !== 'opportunity' ||
+    objectPermissions.canDestroyObjectRecords;
 
   const hasAnySoftDeleteFilterOnView = useAtomComponentSelectorValue(
     hasAnySoftDeleteFilterOnViewComponentSelector,
@@ -121,6 +123,9 @@ export const RecordBoardColumnHeader = () => {
     await createNewIndexRecord({
       position: 'first',
       [selectFieldMetadataItem.name]: columnDefinition.value,
+      ...(objectMetadataItem.nameSingular === 'opportunity'
+        ? { name: t`New Project` }
+        : {}),
     });
   };
 

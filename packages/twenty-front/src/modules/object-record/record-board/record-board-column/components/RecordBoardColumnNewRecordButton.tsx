@@ -46,12 +46,15 @@ export const RecordBoardColumnNewRecordButton = () => {
   );
 
   const hasObjectUpdatePermissions = objectPermissions.canUpdateObjectRecords;
+  const canCreateRecordFromColumn =
+    objectMetadataItem.nameSingular !== 'opportunity' ||
+    objectPermissions.canDestroyObjectRecords;
 
   const { createNewIndexRecord } = useCreateNewIndexRecord({
     objectMetadataItem: objectMetadataItem,
   });
 
-  if (objectMetadataItem.nameSingular === 'opportunity') {
+  if (!canCreateRecordFromColumn) {
     return null;
   }
 
@@ -73,6 +76,9 @@ export const RecordBoardColumnNewRecordButton = () => {
         await createNewIndexRecord({
           position: 'last',
           [selectFieldMetadataItem.name]: columnDefinition.value,
+          ...(objectMetadataItem.nameSingular === 'opportunity'
+            ? { name: t`New Project` }
+            : {}),
         });
       }}
     >

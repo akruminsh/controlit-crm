@@ -13,12 +13,18 @@ import {
 
 const ROLE_LABEL = 'Territory Contributor';
 const ROLE_DESCRIPTION =
-  'Can view assigned territory data and create/update own Projects and Tasks within assigned territories.';
+  'Can view assigned territory data and create/update Projects within assigned territories. Tasks are reserved for full-access users.';
 const ROLE_ICON = 'IconUserCheck';
 const ROLE_UNIVERSAL_IDENTIFIER = 'f82b25b2-9bbb-4de4-9ebc-88404763f5b0';
 const PILOT_EMAIL = 'ak@marketinghackers.lv';
-const READ_OBJECTS = ['company', 'person', 'opportunity', 'task', 'note'];
-const UPDATE_OBJECTS = ['opportunity', 'task'];
+const OBJECT_PERMISSION_PLAN = [
+  { nameSingular: 'company', canRead: true, canUpdate: false },
+  { nameSingular: 'person', canRead: true, canUpdate: false },
+  { nameSingular: 'opportunity', canRead: true, canUpdate: true },
+  { nameSingular: 'task', canRead: false, canUpdate: false },
+  { nameSingular: 'note', canRead: true, canUpdate: false },
+  { nameSingular: 'workspaceMember', canRead: true, canUpdate: false },
+];
 
 const { args, isDryRun, skipBackup } = parseCommonArgs();
 const shouldAssignPilot = args.includes('--assign-pilot');
@@ -61,6 +67,16 @@ function workspaceScopeSql() {
   `;
 }
 
+function objectPermissionPlanSql() {
+  return OBJECT_PERMISSION_PLAN.map(
+    (permission) => `(
+      ${sqlString(permission.nameSingular)},
+      ${permission.canRead},
+      ${permission.canUpdate}
+    )`,
+  ).join(',\n');
+}
+
 function buildDryRunSql() {
   return `
     WITH ${workspaceScopeSql()}
@@ -86,7 +102,12 @@ function buildDryRunSql() {
       ON role."workspaceId" = workspace."id"
       AND role."label" = ${sqlString(ROLE_LABEL)};
 
-    WITH ${workspaceScopeSql()}
+    WITH
+    ${workspaceScopeSql()},
+    "desiredObjectPermission"("nameSingular", "canRead", "canUpdate") AS (
+      VALUES
+      ${objectPermissionPlanSql()}
+    )
     SELECT
       'object-permission' AS "item",
       object."nameSingular" AS "id",
@@ -94,12 +115,15 @@ function buildDryRunSql() {
         'canRead=', COALESCE(permission."canReadObjectRecords"::text, '<missing>'),
         ', canUpdate=', COALESCE(permission."canUpdateObjectRecords"::text, '<missing>'),
         ', canSoftDelete=', COALESCE(permission."canSoftDeleteObjectRecords"::text, '<missing>'),
-        ', canDestroy=', COALESCE(permission."canDestroyObjectRecords"::text, '<missing>')
+        ', canDestroy=', COALESCE(permission."canDestroyObjectRecords"::text, '<missing>'),
+        ', desiredRead=', desired."canRead",
+        ', desiredUpdate=', desired."canUpdate"
       ) AS "details"
     FROM "workspaceScope" workspace
+    JOIN "desiredObjectPermission" desired ON true
     JOIN "core"."objectMetadata" object
       ON object."workspaceId" = workspace."id"
-      AND object."nameSingular" IN (${READ_OBJECTS.map(sqlString).join(', ')})
+      AND object."nameSingular" = desired."nameSingular"
     LEFT JOIN "core"."role" role
       ON role."workspaceId" = workspace."id"
       AND role."label" = ${sqlString(ROLE_LABEL)}
@@ -192,6 +216,10 @@ function buildApplySql() {
   return `
     WITH
       ${workspaceScopeSql()},
+      "desiredObjectPermission"("nameSingular", "canRead", "canUpdate") AS (
+        VALUES
+        ${objectPermissionPlanSql()}
+      ),
       "applicationScope" AS (
         SELECT workspace."workspaceCustomApplicationId" AS "id"
         FROM "workspaceScope" workspace
@@ -279,13 +307,13 @@ function buildApplySql() {
           uuid_generate_v4(),
           uuid_generate_v5(
             uuid_ns_url(),
-            CONCAT(${sqlString(ROLE_UNIVERSAL_IDENTIFIER)}, ':objectPermission:', object."nameSingular")
+            CONCAT(${sqlString(ROLE_UNIVERSAL_IDENTIFIER)}, ':objectPermission:', desired."nameSingular")
           ),
           application."id",
           role."id",
           object."id",
-          true,
-          object."nameSingular" IN (${UPDATE_OBJECTS.map(sqlString).join(', ')}),
+          desired."canRead",
+          desired."canUpdate",
           false,
           false,
           role."workspaceId",
@@ -293,9 +321,10 @@ function buildApplySql() {
           now()
         FROM "upsertedRole" role
         JOIN "applicationScope" application ON true
+        JOIN "desiredObjectPermission" desired ON true
         JOIN "core"."objectMetadata" object
           ON object."workspaceId" = role."workspaceId"
-          AND object."nameSingular" IN (${READ_OBJECTS.map(sqlString).join(', ')})
+          AND object."nameSingular" = desired."nameSingular"
         ON CONFLICT ("objectMetadataId", "roleId")
         DO UPDATE SET
           "universalIdentifier" = EXCLUDED."universalIdentifier",
