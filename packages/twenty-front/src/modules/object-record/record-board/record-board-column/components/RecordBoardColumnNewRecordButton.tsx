@@ -46,17 +46,10 @@ export const RecordBoardColumnNewRecordButton = () => {
   );
 
   const hasObjectUpdatePermissions = objectPermissions.canUpdateObjectRecords;
-  const canCreateRecordFromColumn =
-    objectMetadataItem.nameSingular !== 'opportunity' ||
-    objectPermissions.canDestroyObjectRecords;
 
   const { createNewIndexRecord } = useCreateNewIndexRecord({
     objectMetadataItem: objectMetadataItem,
   });
-
-  if (!canCreateRecordFromColumn) {
-    return null;
-  }
 
   if (!hasObjectUpdatePermissions) {
     return null;

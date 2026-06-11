@@ -93,9 +93,6 @@ export const RecordBoardColumnHeader = () => {
   );
 
   const hasObjectUpdatePermissions = objectPermissions.canUpdateObjectRecords;
-  const canCreateRecordFromColumn =
-    objectMetadataItem.nameSingular !== 'opportunity' ||
-    objectPermissions.canDestroyObjectRecords;
 
   const hasAnySoftDeleteFilterOnView = useAtomComponentSelectorValue(
     hasAnySoftDeleteFilterOnViewComponentSelector,
@@ -193,8 +190,7 @@ export const RecordBoardColumnHeader = () => {
                     });
                   }}
                 />
-                {canCreateRecordFromColumn &&
-                  hasObjectUpdatePermissions &&
+                {hasObjectUpdatePermissions &&
                   !hasAnySoftDeleteFilterOnView && (
                     <LightIconButton
                       accent="tertiary"
