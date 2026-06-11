@@ -17,6 +17,8 @@ const ROLE_DESCRIPTION =
 const ROLE_ICON = 'IconUserCheck';
 const ROLE_UNIVERSAL_IDENTIFIER = 'f82b25b2-9bbb-4de4-9ebc-88404763f5b0';
 const PILOT_EMAIL = 'ak@marketinghackers.lv';
+const READ_OBJECTS = ['company', 'person', 'opportunity', 'task', 'note'];
+const UPDATE_OBJECTS = ['opportunity', 'task'];
 
 const { args, isDryRun, skipBackup } = parseCommonArgs();
 const shouldAssignPilot = args.includes('--assign-pilot');
@@ -72,7 +74,13 @@ function buildDryRunSql() {
     SELECT
       'role' AS "item",
       COALESCE(role."id"::text, '<missing>') AS "id",
-      role."label" AS "details"
+      CONCAT(
+        role."label",
+        ', canReadAll=',
+        COALESCE(role."canReadAllObjectRecords"::text, '<missing>'),
+        ', canUpdateAll=',
+        COALESCE(role."canUpdateAllObjectRecords"::text, '<missing>')
+      ) AS "details"
     FROM "workspaceScope" workspace
     LEFT JOIN "core"."role" role
       ON role."workspaceId" = workspace."id"
@@ -91,7 +99,7 @@ function buildDryRunSql() {
     FROM "workspaceScope" workspace
     JOIN "core"."objectMetadata" object
       ON object."workspaceId" = workspace."id"
-      AND object."nameSingular" IN ('opportunity', 'task')
+      AND object."nameSingular" IN (${READ_OBJECTS.map(sqlString).join(', ')})
     LEFT JOIN "core"."role" role
       ON role."workspaceId" = workspace."id"
       AND role."label" = ${sqlString(ROLE_LABEL)}
@@ -220,7 +228,7 @@ function buildApplySql() {
           ${sqlString(ROLE_ICON)},
           false,
           false,
-          true,
+          false,
           false,
           false,
           false,
@@ -277,7 +285,7 @@ function buildApplySql() {
           role."id",
           object."id",
           true,
-          true,
+          object."nameSingular" IN (${UPDATE_OBJECTS.map(sqlString).join(', ')}),
           false,
           false,
           role."workspaceId",
@@ -287,7 +295,7 @@ function buildApplySql() {
         JOIN "applicationScope" application ON true
         JOIN "core"."objectMetadata" object
           ON object."workspaceId" = role."workspaceId"
-          AND object."nameSingular" IN ('opportunity', 'task')
+          AND object."nameSingular" IN (${READ_OBJECTS.map(sqlString).join(', ')})
         ON CONFLICT ("objectMetadataId", "roleId")
         DO UPDATE SET
           "universalIdentifier" = EXCLUDED."universalIdentifier",
@@ -313,7 +321,7 @@ async function flushRemoteCache(remoteConfig) {
     `cd ${shellQuote(remoteConfig.remoteDir)}`,
     '&&',
     'docker compose exec -T server',
-    'node dist/src/command/command.js cache:flush',
+    'yarn command:prod cache:flush',
   ].join(' ');
 
   console.log('Flushing CRM cache...');
