@@ -17,6 +17,7 @@ import { RecordFiltersComponentInstanceContext } from '@/object-record/record-fi
 import { currentRecordFiltersComponentState } from '@/object-record/record-filter/states/currentRecordFiltersComponentState';
 import { type RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
 import { getRecordFilterOperands } from '@/object-record/record-filter/utils/getRecordFilterOperands';
+import { subFieldNameUsedInDropdownComponentState } from '@/object-record/object-filter-dropdown/states/subFieldNameUsedInDropdownComponentState';
 import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
 import { useAtomComponentSelectorValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentSelectorValue';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
@@ -43,6 +44,10 @@ const personCompanyFieldMetadataItemMock =
 const personCreatedAtFieldMetadataItemMock =
   peopleObjectMetadataItemMock.fields.find(
     (field) => field.name === 'createdAt',
+  );
+const personCreatedByFieldMetadataItemMock =
+  peopleObjectMetadataItemMock.fields.find(
+    (field) => field.name === 'createdBy',
   );
 
 const wrapper = ({ children }: { children: React.ReactNode }) => {
@@ -182,6 +187,64 @@ describe('useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown', () =
         enableGlobalHotkeysConflictingWithKeyboard: false,
       },
     });
+  });
+
+  it('should initialize actor filters on workspace members by default', () => {
+    const { result } = renderHook(
+      () => {
+        const { initializeFilterOnFieldMetataItemFromViewBarFilterDropdown } =
+          useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown();
+
+        const fieldMetadataItemUsedInDropdown = useAtomComponentSelectorValue(
+          fieldMetadataItemUsedInDropdownComponentSelector,
+        );
+        const objectFilterDropdownFilterIsSelected = useAtomComponentStateValue(
+          objectFilterDropdownFilterIsSelectedComponentState,
+        );
+        const selectedOperandInDropdown = useAtomComponentStateValue(
+          selectedOperandInDropdownComponentState,
+        );
+        const subFieldNameUsedInDropdown = useAtomComponentStateValue(
+          subFieldNameUsedInDropdownComponentState,
+        );
+
+        return {
+          initializeFilterOnFieldMetataItemFromViewBarFilterDropdown,
+          fieldMetadataItemUsedInDropdown,
+          objectFilterDropdownFilterIsSelected,
+          selectedOperandInDropdown,
+          subFieldNameUsedInDropdown,
+        };
+      },
+      {
+        wrapper,
+      },
+    );
+
+    if (!personCreatedByFieldMetadataItemMock) {
+      throw new Error('personCreatedByFieldMetadataItemMock is not defined');
+    }
+
+    const defaultOperand = getRecordFilterOperands({
+      filterType: getFilterTypeFromFieldType(
+        personCreatedByFieldMetadataItemMock.type,
+      ),
+      subFieldName: 'workspaceMemberId',
+    })?.[0];
+
+    act(() => {
+      result.current.initializeFilterOnFieldMetataItemFromViewBarFilterDropdown(
+        personCreatedByFieldMetadataItemMock,
+      );
+    });
+
+    expect(result.current.fieldMetadataItemUsedInDropdown?.id).toBe(
+      personCreatedByFieldMetadataItemMock.id,
+    );
+    expect(result.current.objectFilterDropdownFilterIsSelected).toBe(true);
+    expect(result.current.subFieldNameUsedInDropdown).toBe('workspaceMemberId');
+    expect(result.current.selectedOperandInDropdown).toBe(defaultOperand);
+    expect(mockPushFocusItemToFocusStack).not.toHaveBeenCalled();
   });
 
   it('should initialize filter with a duplicate field on city', () => {

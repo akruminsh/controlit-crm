@@ -19,8 +19,10 @@ export const MAX_ITEMS_TO_DISPLAY = 3;
 
 export const ObjectFilterDropdownSourceSelect = ({
   dropdownId,
+  renderDropdownContent = true,
 }: {
   dropdownId: string;
+  renderDropdownContent?: boolean;
 }) => {
   const objectFilterDropdownSearchInput = useAtomComponentStateValue(
     objectFilterDropdownSearchInputComponentState,
@@ -84,21 +86,29 @@ export const ObjectFilterDropdownSourceSelect = ({
     applyObjectFilterDropdownFilterValue(newFilterValue, filterDisplayValue);
   };
 
+  const content = (
+    <MultipleSelectDropdown
+      selectableListId="object-filter-source-select-id"
+      focusId={dropdownId}
+      itemsToSelect={sourceTypes.filter(
+        (item) =>
+          !filteredSelectedItems.some((selected) => selected.id === item.id),
+      )}
+      filteredSelectedItems={filteredSelectedItems}
+      selectedItems={filteredSelectedItems}
+      onChange={handleMultipleItemSelectChange}
+      searchFilter={objectFilterDropdownSearchInput}
+      loadingItems={false}
+    />
+  );
+
+  if (!renderDropdownContent) {
+    return content;
+  }
+
   return (
     <DropdownContent widthInPixels={GenericDropdownContentWidth.ExtraLarge}>
-      <MultipleSelectDropdown
-        selectableListId="object-filter-source-select-id"
-        focusId={dropdownId}
-        itemsToSelect={sourceTypes.filter(
-          (item) =>
-            !filteredSelectedItems.some((selected) => selected.id === item.id),
-        )}
-        filteredSelectedItems={filteredSelectedItems}
-        selectedItems={filteredSelectedItems}
-        onChange={handleMultipleItemSelectChange}
-        searchFilter={objectFilterDropdownSearchInput}
-        loadingItems={false}
-      />
+      {content}
     </DropdownContent>
   );
 };

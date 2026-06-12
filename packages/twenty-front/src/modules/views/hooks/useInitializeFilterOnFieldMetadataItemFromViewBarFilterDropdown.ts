@@ -9,6 +9,8 @@ import { currentRecordFiltersComponentState } from '@/object-record/record-filte
 import { type RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
 import { findDuplicateRecordFilterInNonAdvancedRecordFilters } from '@/object-record/record-filter/utils/findDuplicateRecordFilterInNonAdvancedRecordFilters';
 
+import { subFieldNameUsedInDropdownComponentState } from '@/object-record/object-filter-dropdown/states/subFieldNameUsedInDropdownComponentState';
+import { getDefaultSubFieldNameForCompositeFilterableFieldType } from '@/object-record/record-filter/utils/getDefaultSubFieldNameForCompositeFilterableFieldType';
 import { getRecordFilterOperands } from '@/object-record/record-filter/utils/getRecordFilterOperands';
 import { usePushFocusItemToFocusStack } from '@/ui/utilities/focus/hooks/usePushFocusItemToFocusStack';
 import { FocusComponentType } from '@/ui/utilities/focus/types/FocusComponentType';
@@ -45,6 +47,11 @@ export const useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown =
         objectFilterDropdownFilterIsSelectedComponentState,
       );
 
+    const subFieldNameUsedInDropdownCallbackState =
+      useAtomComponentStateCallbackState(
+        subFieldNameUsedInDropdownComponentState,
+      );
+
     const { upsertObjectFilterDropdownCurrentFilter } =
       useUpsertObjectFilterDropdownCurrentFilter();
 
@@ -67,6 +74,9 @@ export const useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown =
 
           const filterType = getFilterTypeFromFieldType(fieldMetadataItem.type);
 
+          const defaultSubFieldName =
+            getDefaultSubFieldNameForCompositeFilterableFieldType(filterType);
+
           if (filterType === 'RELATION' || filterType === 'SELECT') {
             pushFocusItemToFocusStack({
               focusId: ViewBarFilterDropdownIds.MAIN,
@@ -84,6 +94,7 @@ export const useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown =
 
           const defaultOperand = getRecordFilterOperands({
             filterType,
+            subFieldName: defaultSubFieldName,
           })[0];
 
           const duplicateFilterInCurrentRecordFilters =
@@ -103,10 +114,20 @@ export const useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown =
             );
 
             store.set(
+              subFieldNameUsedInDropdownCallbackState,
+              duplicateFilterInCurrentRecordFilters.subFieldName,
+            );
+
+            store.set(
               selectedOperandInDropdownCallbackState,
               duplicateFilterInCurrentRecordFilters.operand,
             );
           } else {
+            store.set(
+              subFieldNameUsedInDropdownCallbackState,
+              defaultSubFieldName,
+            );
+
             store.set(selectedOperandInDropdownCallbackState, defaultOperand);
 
             if (filterType === 'DATE' || filterType === 'DATE_TIME') {
@@ -139,6 +160,7 @@ export const useInitializeFilterOnFieldMetadataItemFromViewBarFilterDropdown =
           fieldMetadataItemUsedInDropdownCallbackState,
           currentRecordFiltersCallbackState,
           objectFilterDropdownFilterIsSelectedCallbackState,
+          subFieldNameUsedInDropdownCallbackState,
           pushFocusItemToFocusStack,
           objectFilterDropdownCurrentRecordFilterCallbackState,
           selectedOperandInDropdownCallbackState,

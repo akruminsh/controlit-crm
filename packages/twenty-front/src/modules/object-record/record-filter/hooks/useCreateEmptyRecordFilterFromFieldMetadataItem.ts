@@ -14,14 +14,15 @@ export const useCreateEmptyRecordFilterFromFieldMetadataItem = () => {
   ) => {
     const filterType = getFilterTypeFromFieldType(fieldMetadataItem.type);
 
+    const defaultSubFieldName =
+      getDefaultSubFieldNameForCompositeFilterableFieldType(filterType);
+
     const availableOperandsForFilter = getRecordFilterOperands({
       filterType,
+      subFieldName: defaultSubFieldName,
     });
 
     const defaultOperand = availableOperandsForFilter[0];
-
-    const defaultSubFieldName =
-      getDefaultSubFieldNameForCompositeFilterableFieldType(filterType);
 
     const { displayValue, value } = getInitialFilterValue(
       filterType,

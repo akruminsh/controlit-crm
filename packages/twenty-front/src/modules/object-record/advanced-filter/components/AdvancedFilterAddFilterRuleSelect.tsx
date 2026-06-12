@@ -79,6 +79,7 @@ export const AdvancedFilterAddFilterRuleSelect = ({
       type: filterType,
       operand: getRecordFilterOperands({
         filterType,
+        subFieldName: defaultSubFieldName,
       })[0],
       value: '',
       displayValue: '',
@@ -122,18 +123,23 @@ export const AdvancedFilterAddFilterRuleSelect = ({
       defaultFieldMetadataItemForFilter.type,
     );
 
+    const defaultSubFieldName =
+      getDefaultSubFieldNameForCompositeFilterableFieldType(filterType);
+
     const newRecordFilter: RecordFilter = {
       id: v4(),
       fieldMetadataId: defaultFieldMetadataItemForFilter.id,
       type: filterType,
       operand: getRecordFilterOperands({
         filterType,
+        subFieldName: defaultSubFieldName,
       })[0],
       value: '',
       displayValue: '',
       recordFilterGroupId: newRecordFilterGroupId,
       positionInRecordFilterGroup: 1,
       label: defaultFieldMetadataItemForFilter.label,
+      subFieldName: defaultSubFieldName,
     };
 
     upsertRecordFilter(newRecordFilter);
