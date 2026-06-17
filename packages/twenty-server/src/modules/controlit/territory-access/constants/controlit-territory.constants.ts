@@ -17,6 +17,8 @@ export const CONTROLIT_TERRITORIES = [
   'UNITED_KINGDOM',
   'KUWAIT',
   'SWEDEN',
+  'NETHERLANDS',
+  'USA',
 ] as const;
 
 export type ControlitTerritory = (typeof CONTROLIT_TERRITORIES)[number];

@@ -278,6 +278,8 @@ describe('ControlitTerritoryAccessService', () => {
             'UNITED_KINGDOM',
             'KUWAIT',
             'SWEDEN',
+            'NETHERLANDS',
+            'USA',
           ],
           canManageTerritory: false,
         },
@@ -306,6 +308,8 @@ describe('ControlitTerritoryAccessService', () => {
                 'UNITED_KINGDOM',
                 'KUWAIT',
                 'SWEDEN',
+                'NETHERLANDS',
+                'USA',
               ],
             },
           },
@@ -336,6 +340,43 @@ describe('ControlitTerritoryAccessService', () => {
         and: [
           { title: { ilike: '%source notes%' } },
           { noteTerritory: { in: ['FINLAND'] } },
+        ],
+      },
+    });
+  });
+
+  it('adds territory and ownership filters to scoped task reads', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['ROMANIA', 'HUNGARY'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await expect(
+      service.applyPreQueryHook(
+        authContext,
+        'task',
+        CommonQueryNames.FIND_MANY,
+        { filter: { title: { ilike: '%call%' } } },
+      ),
+    ).resolves.toEqual({
+      filter: {
+        and: [
+          {
+            and: [
+              { title: { ilike: '%call%' } },
+              { taskTerritory: { in: ['ROMANIA', 'HUNGARY'] } },
+            ],
+          },
+          {
+            or: [
+              { assigneeId: { eq: 'member-id' } },
+              { createdBy: { workspaceMemberId: { eq: 'member-id' } } },
+            ],
+          },
         ],
       },
     });
@@ -407,6 +448,14 @@ describe('ControlitTerritoryAccessService', () => {
           {
             and: [
               { task: { taskTerritory: { in: ['ESTONIA', 'LATVIA'] } } },
+              {
+                task: {
+                  or: [
+                    { assigneeId: { eq: 'member-id' } },
+                    { createdBy: { workspaceMemberId: { eq: 'member-id' } } },
+                  ],
+                },
+              },
               {
                 or: [
                   {
@@ -547,7 +596,7 @@ describe('ControlitTerritoryAccessService', () => {
     });
   });
 
-  it('blocks non-branch managers from updating companies', async () => {
+  it('allows territory managers to update companies inside their territories', async () => {
     const { service } = setup({
       assignmentRows: [
         {
@@ -555,16 +604,21 @@ describe('ControlitTerritoryAccessService', () => {
           canManageTerritory: false,
         },
       ],
+      record: {
+        id: 'company-id',
+        companyCountry: 'FINLAND',
+      },
     });
+    const payload = { id: 'company-id', data: { name: 'YIT' } };
 
-    await expectPermissionDenied(
+    await expect(
       service.applyPreQueryHook(
         authContext,
         'company',
         CommonQueryNames.UPDATE_ONE,
-        { id: 'company-id', data: { name: 'YIT' } },
+        payload,
       ),
-    );
+    ).resolves.toBe(payload);
   });
 
   it('allows managers to create opportunities inside their territories', async () => {
@@ -594,8 +648,15 @@ describe('ControlitTerritoryAccessService', () => {
   });
 
   it.each([
+    ['company', 'companyCountry', { name: 'New customer company' }],
+    [
+      'person',
+      'personTerritory',
+      { name: { firstName: 'New', lastName: 'Contact' } },
+    ],
     ['opportunity', 'projectCountry', { name: 'New roof project' }],
     ['task', 'taskTerritory', { title: 'Call customer' }],
+    ['note', 'noteTerritory', { title: 'Meeting note' }],
   ])(
     'defaults %s creates without a territory to the first assigned territory',
     async (objectName, territoryFieldName, data) => {
@@ -624,7 +685,7 @@ describe('ControlitTerritoryAccessService', () => {
     },
   );
 
-  it('blocks managers from creating opportunities when they have no assigned territories', async () => {
+  it('blocks managers from creating records when they have no assigned territories', async () => {
     const { service } = setup({
       assignmentRows: [
         {
@@ -637,36 +698,11 @@ describe('ControlitTerritoryAccessService', () => {
     await expectPermissionDenied(
       service.applyPreQueryHook(
         authContext,
-        'opportunity',
+        'company',
         CommonQueryNames.CREATE_ONE,
         {
           data: {
-            name: 'New roof project',
-          },
-        },
-      ),
-    );
-  });
-
-  it('blocks managers from creating opportunities outside their territories', async () => {
-    const { service } = setup({
-      assignmentRows: [
-        {
-          territories: ['FINLAND'],
-          canManageTerritory: false,
-        },
-      ],
-    });
-
-    await expectPermissionDenied(
-      service.applyPreQueryHook(
-        authContext,
-        'opportunity',
-        CommonQueryNames.CREATE_ONE,
-        {
-          data: {
-            name: 'New roof project',
-            projectCountry: 'ESTONIA',
+            name: 'New customer company',
           },
         },
       ),
@@ -674,11 +710,18 @@ describe('ControlitTerritoryAccessService', () => {
   });
 
   it.each([
-    ['opportunity', 'projectCountry'],
-    ['task', 'taskTerritory'],
+    ['company', 'companyCountry', { name: 'New customer company' }],
+    [
+      'person',
+      'personTerritory',
+      { name: { firstName: 'New', lastName: 'Contact' } },
+    ],
+    ['opportunity', 'projectCountry', { name: 'New roof project' }],
+    ['task', 'taskTerritory', { title: 'Call customer' }],
+    ['note', 'noteTerritory', { title: 'Meeting note' }],
   ])(
-    'blocks managers from bulk-creating %s records inside their territories',
-    async (objectName, territoryFieldName) => {
+    'blocks managers from creating %s records outside their territories',
+    async (objectName, territoryFieldName, data) => {
       const { service } = setup({
         assignmentRows: [
           {
@@ -692,25 +735,50 @@ describe('ControlitTerritoryAccessService', () => {
         service.applyPreQueryHook(
           authContext,
           objectName,
-          CommonQueryNames.CREATE_MANY,
+          CommonQueryNames.CREATE_ONE,
           {
-            data: [
-              {
-                name: 'Bulk record one',
-                [territoryFieldName]: 'FINLAND',
-              },
-              {
-                name: 'Bulk record two',
-                [territoryFieldName]: 'FINLAND',
-              },
-            ],
+            data: {
+              ...data,
+              [territoryFieldName]: 'ESTONIA',
+            },
           },
         ),
       );
     },
   );
 
-  it('allows managers to update opportunities created by them inside their territories', async () => {
+  it('keeps denying bulk create even inside assigned territories', async () => {
+    const { service } = setup({
+      assignmentRows: [
+        {
+          territories: ['FINLAND'],
+          canManageTerritory: false,
+        },
+      ],
+    });
+
+    await expectPermissionDenied(
+      service.applyPreQueryHook(
+        authContext,
+        'company',
+        CommonQueryNames.CREATE_MANY,
+        {
+          data: [
+            {
+              name: 'Bulk record one',
+              companyCountry: 'FINLAND',
+            },
+            {
+              name: 'Bulk record two',
+              companyCountry: 'FINLAND',
+            },
+          ],
+        },
+      ),
+    );
+  });
+
+  it('allows managers to update opportunities inside their territories', async () => {
     const { service } = setup({
       assignmentRows: [
         {
@@ -721,7 +789,7 @@ describe('ControlitTerritoryAccessService', () => {
       record: {
         id: 'opportunity-id',
         projectCountry: 'FINLAND',
-        createdBy: { workspaceMemberId: 'member-id' },
+        createdBy: { workspaceMemberId: 'other-member-id' },
       },
     });
     const payload = {
@@ -739,7 +807,7 @@ describe('ControlitTerritoryAccessService', () => {
     ).resolves.toBe(payload);
   });
 
-  it('blocks managers from updating opportunities created by someone else', async () => {
+  it('blocks managers from updating opportunities outside their territories', async () => {
     const { service } = setup({
       assignmentRows: [
         {
@@ -749,8 +817,8 @@ describe('ControlitTerritoryAccessService', () => {
       ],
       record: {
         id: 'opportunity-id',
-        projectCountry: 'FINLAND',
-        createdBy: { workspaceMemberId: 'other-member-id' },
+        projectCountry: 'ESTONIA',
+        createdBy: { workspaceMemberId: 'member-id' },
       },
     });
 
@@ -764,7 +832,7 @@ describe('ControlitTerritoryAccessService', () => {
     );
   });
 
-  it('blocks canManageTerritory limited users from updating companies inside their territories', async () => {
+  it('allows territory managers to update notes inside their territories', async () => {
     const { service } = setup({
       assignmentRows: [
         {
@@ -773,19 +841,23 @@ describe('ControlitTerritoryAccessService', () => {
         },
       ],
       record: {
-        id: 'company-id',
-        companyCountry: 'FINLAND',
+        id: 'note-id',
+        noteTerritory: 'FINLAND',
       },
     });
+    const payload = {
+      id: 'note-id',
+      data: { title: 'Updated note' },
+    };
 
-    await expectPermissionDenied(
+    await expect(
       service.applyPreQueryHook(
         authContext,
-        'company',
+        'note',
         CommonQueryNames.UPDATE_ONE,
-        { id: 'company-id', data: { name: 'YIT' } },
+        payload,
       ),
-    );
+    ).resolves.toBe(payload);
   });
 
   it('allows managers to update tasks assigned to them inside their territory', async () => {
@@ -815,7 +887,7 @@ describe('ControlitTerritoryAccessService', () => {
     ).resolves.toBe(payload);
   });
 
-  it('blocks canManageTerritory limited users from soft-deleting tasks inside their territories', async () => {
+  it('blocks territory managers from soft-deleting tasks inside their territories', async () => {
     const { service } = setup({
       assignmentRows: [
         {
@@ -897,39 +969,7 @@ describe('ControlitTerritoryAccessService', () => {
     ['person', 'personTerritory'],
     ['note', 'noteTerritory'],
   ])(
-    'blocks canManageTerritory limited users from creating %s records',
-    async (objectName, territoryFieldName) => {
-      const { service } = setup({
-        assignmentRows: [
-          {
-            territories: ['FINLAND'],
-            canManageTerritory: true,
-          },
-        ],
-      });
-
-      await expectPermissionDenied(
-        service.applyPreQueryHook(
-          authContext,
-          objectName,
-          CommonQueryNames.CREATE_ONE,
-          {
-            data: {
-              name: 'Restricted record',
-              [territoryFieldName]: 'FINLAND',
-            },
-          },
-        ),
-      );
-    },
-  );
-
-  it.each([
-    ['company', 'companyCountry'],
-    ['person', 'personTerritory'],
-    ['note', 'noteTerritory'],
-  ])(
-    'blocks canManageTerritory limited users from updating %s records',
+    'allows territory managers to update %s records inside their territories',
     async (objectName, territoryFieldName) => {
       const { service } = setup({
         assignmentRows: [
@@ -944,14 +984,17 @@ describe('ControlitTerritoryAccessService', () => {
         },
       });
 
-      await expectPermissionDenied(
+      await expect(
         service.applyPreQueryHook(
           authContext,
           objectName,
           CommonQueryNames.UPDATE_ONE,
           { id: `${objectName}-id`, data: { name: 'Restricted update' } },
         ),
-      );
+      ).resolves.toEqual({
+        id: `${objectName}-id`,
+        data: { name: 'Restricted update' },
+      });
     },
   );
 
@@ -964,7 +1007,7 @@ describe('ControlitTerritoryAccessService', () => {
     CommonQueryNames.UPDATE_MANY,
     CommonQueryNames.DESTROY_MANY,
   ])(
-    'blocks canManageTerritory limited users from %s mutations',
+    'blocks territory managers from %s mutations',
     async (methodName) => {
       const { service } = setup({
         assignmentRows: [

@@ -22,8 +22,8 @@ import {
   type ControlitTerritory,
 } from 'src/modules/controlit/territory-access/constants/controlit-territory.constants';
 import {
+  buildTaskManagerOwnershipFilter,
   getRecordTerritory,
-  isRecordCreatedByWorkspaceMember,
   isTaskOwnedByWorkspaceMember,
   mergeObjectFilter,
   mergeObjectFilterWithScopedFilter,
@@ -135,7 +135,13 @@ const SINGLE_RECORD_MUTATION_METHODS = new Set<string>([
   CommonQueryNames.RESTORE_ONE,
 ]);
 
-const USER_OWNED_MUTATION_OBJECTS = new Set<string>(['opportunity', 'task']);
+const TERRITORY_MUTATION_OBJECTS = new Set<string>([
+  'company',
+  'person',
+  'opportunity',
+  'task',
+  'note',
+]);
 
 @Injectable()
 export class ControlitTerritoryAccessService {
@@ -176,6 +182,14 @@ export class ControlitTerritoryAccessService {
 
       if (!territoryFieldName) {
         return payload;
+      }
+
+      if (objectName === 'task') {
+        return this.withTaskManagerReadFilter(
+          payload,
+          territoryFieldName,
+          scope,
+        );
       }
 
       return this.withTerritoryFilter(payload, territoryFieldName, scope);
@@ -414,11 +428,18 @@ export class ControlitTerritoryAccessService {
       return targetFilter;
     }
 
+    const ownerFilters = [
+      this.buildRelationTerritoryFilter(relationReadFilterSpecs.owner, scope),
+    ];
+
+    if (relationReadFilterSpecs.owner.relationName === 'task') {
+      ownerFilters.push({
+        task: buildTaskManagerOwnershipFilter(scope.workspaceMemberId),
+      } as ObjectRecordFilter);
+    }
+
     return {
-      and: [
-        this.buildRelationTerritoryFilter(relationReadFilterSpecs.owner, scope),
-        targetFilter,
-      ],
+      and: [...ownerFilters, targetFilter],
     } as ObjectRecordFilter;
   }
 
@@ -444,7 +465,7 @@ export class ControlitTerritoryAccessService {
       this.throwPermissionDenied();
     }
 
-    if (!USER_OWNED_MUTATION_OBJECTS.has(objectName)) {
+    if (!TERRITORY_MUTATION_OBJECTS.has(objectName)) {
       this.throwPermissionDenied();
     }
 
@@ -505,7 +526,7 @@ export class ControlitTerritoryAccessService {
       );
     }
 
-    if (!USER_OWNED_MUTATION_OBJECTS.has(objectName)) {
+    if (!TERRITORY_MUTATION_OBJECTS.has(objectName)) {
       this.throwPermissionDenied();
     }
 
@@ -524,12 +545,26 @@ export class ControlitTerritoryAccessService {
       this.throwPermissionDenied();
     }
 
-    if (
-      objectName === 'opportunity' &&
-      !isRecordCreatedByWorkspaceMember(record, scope.workspaceMemberId)
-    ) {
-      this.throwPermissionDenied();
-    }
+  }
+
+  private withTaskManagerReadFilter(
+    payload: ResolverArgs,
+    territoryFieldName: string,
+    scope: ControlitTerritoryAccessScope,
+  ): ResolverArgs {
+    const territoryScopedPayload = this.withTerritoryFilter(
+      payload,
+      territoryFieldName,
+      scope,
+    ) as PayloadWithFilter;
+
+    return {
+      ...territoryScopedPayload,
+      filter: mergeObjectFilterWithScopedFilter(
+        territoryScopedPayload.filter,
+        buildTaskManagerOwnershipFilter(scope.workspaceMemberId),
+      ),
+    } as ResolverArgs;
   }
 
   private validateTerritoryUpdateDataOrThrow(

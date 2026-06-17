@@ -11,11 +11,11 @@ import {
 const ROLE_DEFINITION = {
   label: 'Territory Contributor',
   description:
-    'Can view assigned territory data and create/update own Projects and Tasks within assigned territories.',
+    'Can view and create/update CRM records within assigned territories. Delete and admin settings remain restricted.',
   icon: 'IconUserCheck',
   canUpdateAllSettings: false,
   canAccessAllTools: false,
-  canReadAllObjectRecords: true,
+  canReadAllObjectRecords: false,
   canUpdateAllObjectRecords: false,
   canSoftDeleteAllObjectRecords: false,
   canDestroyAllObjectRecords: false,
@@ -24,7 +24,14 @@ const ROLE_DEFINITION = {
   canBeAssignedToApiKeys: false,
 };
 
-const OBJECT_PERMISSION_OBJECTS = ['opportunity', 'task'];
+const OBJECT_PERMISSION_PLAN = [
+  { nameSingular: 'company', canRead: true, canUpdate: true },
+  { nameSingular: 'person', canRead: true, canUpdate: true },
+  { nameSingular: 'opportunity', canRead: true, canUpdate: true },
+  { nameSingular: 'task', canRead: true, canUpdate: true },
+  { nameSingular: 'note', canRead: true, canUpdate: true },
+  { nameSingular: 'workspaceMember', canRead: true, canUpdate: false },
+];
 const PILOT_EMAIL = 'ak@marketinghackers.lv';
 
 const { args, isDryRun, skipBackup } = parseCommonArgs();
@@ -49,8 +56,10 @@ async function main() {
   const objectMetadataByName = new Map(
     objects.map((object) => [object.nameSingular, object]),
   );
-  const missingObjects = OBJECT_PERMISSION_OBJECTS.filter(
-    (objectName) => !objectMetadataByName.has(objectName),
+  const missingObjects = OBJECT_PERMISSION_PLAN.filter(
+    (permission) => !objectMetadataByName.has(permission.nameSingular),
+  ).map(
+    (permission) => permission.nameSingular,
   );
 
   if (missingObjects.length > 0) {
@@ -98,7 +107,7 @@ async function main() {
 
   if (objectPermissionPlan.needsUpdate) {
     console.log(
-      `Object permissions will be upserted for: ${OBJECT_PERMISSION_OBJECTS.join(', ')}`,
+      `Object permissions will be upserted for: ${OBJECT_PERMISSION_PLAN.map((permission) => permission.nameSingular).join(', ')}`,
     );
 
     if (!isDryRun) {
@@ -255,10 +264,10 @@ async function updateRole(client, roleId, update) {
 }
 
 function planObjectPermissions(role, objectMetadataByName) {
-  const objectPermissions = OBJECT_PERMISSION_OBJECTS.map((objectName) => ({
-    objectMetadataId: objectMetadataByName.get(objectName).id,
-    canReadObjectRecords: true,
-    canUpdateObjectRecords: true,
+  const objectPermissions = OBJECT_PERMISSION_PLAN.map((permission) => ({
+    objectMetadataId: objectMetadataByName.get(permission.nameSingular).id,
+    canReadObjectRecords: permission.canRead,
+    canUpdateObjectRecords: permission.canUpdate,
     canSoftDeleteObjectRecords: false,
     canDestroyObjectRecords: false,
   }));

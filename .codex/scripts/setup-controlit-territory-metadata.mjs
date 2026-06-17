@@ -30,6 +30,8 @@ const TERRITORY_OPTIONS = [
   ['United Kingdom', 'UNITED_KINGDOM', 'blue'],
   ['Kuwait', 'KUWAIT', 'orange'],
   ['Sweden', 'SWEDEN', 'yellow'],
+  ['Netherlands', 'NETHERLANDS', 'cyan'],
+  ['USA', 'USA', 'sky'],
 ];
 
 const FIELD_DEFINITIONS = [

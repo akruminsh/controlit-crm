@@ -13,16 +13,16 @@ import {
 
 const ROLE_LABEL = 'Territory Contributor';
 const ROLE_DESCRIPTION =
-  'Can view assigned territory data and create/update Projects within assigned territories. Tasks are reserved for full-access users.';
+  'Can view and create/update CRM records within assigned territories. Delete and admin settings remain restricted.';
 const ROLE_ICON = 'IconUserCheck';
 const ROLE_UNIVERSAL_IDENTIFIER = 'f82b25b2-9bbb-4de4-9ebc-88404763f5b0';
 const PILOT_EMAIL = 'ak@marketinghackers.lv';
 const OBJECT_PERMISSION_PLAN = [
-  { nameSingular: 'company', canRead: true, canUpdate: false },
-  { nameSingular: 'person', canRead: true, canUpdate: false },
+  { nameSingular: 'company', canRead: true, canUpdate: true },
+  { nameSingular: 'person', canRead: true, canUpdate: true },
   { nameSingular: 'opportunity', canRead: true, canUpdate: true },
-  { nameSingular: 'task', canRead: false, canUpdate: false },
-  { nameSingular: 'note', canRead: true, canUpdate: false },
+  { nameSingular: 'task', canRead: true, canUpdate: true },
+  { nameSingular: 'note', canRead: true, canUpdate: true },
   { nameSingular: 'workspaceMember', canRead: true, canUpdate: false },
 ];
 

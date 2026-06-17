@@ -39,6 +39,8 @@ const fieldDefinitions = [
     ['United Kingdom', 'UNITED_KINGDOM', 'blue'],
     ['Kuwait', 'KUWAIT', 'orange'],
     ['Sweden', 'SWEDEN', 'yellow'],
+    ['Netherlands', 'NETHERLANDS', 'cyan'],
+    ['USA', 'USA', 'sky'],
   ]),
   selectField('membraneType', 'Membrane type', 'IconLayersIntersect', [
     ['PVC', 'PVC', 'green'],
