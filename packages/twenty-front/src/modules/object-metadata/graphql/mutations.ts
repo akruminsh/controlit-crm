@@ -176,6 +176,8 @@ export const UPDATE_ONE_FIELD_METADATA_ITEM = gql`
       isNullable
       createdAt
       updatedAt
+      defaultValue
+      options
       settings
       isLabelSyncedWithName
       applicationId

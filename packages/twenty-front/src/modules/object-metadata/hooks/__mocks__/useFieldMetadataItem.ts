@@ -27,6 +27,8 @@ export const queries = {
         isNullable
         createdAt
         updatedAt
+        defaultValue
+        options
         settings
         isLabelSyncedWithName
         applicationId
@@ -108,6 +110,8 @@ const defaultResponseData = {
   isNullable: false,
   createdAt: '1977-09-28T13:56:55.157Z',
   updatedAt: '1996-10-10T08:27:57.117Z',
+  defaultValue: undefined,
+  options: undefined,
   settings: undefined,
   applicationId: null,
 };
