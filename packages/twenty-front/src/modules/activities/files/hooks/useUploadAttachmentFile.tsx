@@ -28,6 +28,7 @@ export const useUploadAttachmentFile = () => {
   const { createOneRecord: createOneAttachment } =
     useCreateOneRecord<Attachment>({
       objectNameSingular: CoreObjectNameSingular.Attachment,
+      skipPostOptimisticEffect: true,
       shouldMatchRootQueryFilter: true,
     });
 

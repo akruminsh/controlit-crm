@@ -45,7 +45,7 @@ const StyledUploadIconContainer = styled.div`
 
 type DropZoneProps = {
   setIsDraggingFile: (drag: boolean) => void;
-  onUploadFiles: (files: File[]) => void;
+  onUploadFiles: (files: File[]) => Promise<void> | void;
 };
 
 export const DropZone = ({
@@ -71,8 +71,11 @@ export const DropZone = ({
       setIsDraggingFile(false);
     },
     onDropAccepted: async (files) => {
-      onUploadFiles(files);
-      setIsDraggingFile(false);
+      try {
+        await onUploadFiles(files);
+      } finally {
+        setIsDraggingFile(false);
+      }
     },
   });
 

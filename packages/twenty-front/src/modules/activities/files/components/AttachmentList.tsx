@@ -4,10 +4,8 @@ import { lazy, type ReactElement, Suspense, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { DropZone } from '@/activities/files/components/DropZone';
-import { useUploadAttachmentFile } from '@/activities/files/hooks/useUploadAttachmentFile';
 import { type Attachment } from '@/activities/files/types/Attachment';
 import { downloadFile } from '@/activities/files/utils/downloadFile';
-import { type ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
 import { isAttachmentPreviewEnabledState } from '@/client-config/states/isAttachmentPreviewEnabledState';
 import { ModalStatefulWrapper } from '@/ui/layout/modal/components/ModalStatefulWrapper';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
@@ -36,9 +34,9 @@ const DocumentViewer = lazy(() =>
 );
 
 type AttachmentListProps = {
-  targetableObject: ActivityTargetableObject;
   title: string;
   attachments: Attachment[];
+  onUploadFiles: (files: File[]) => Promise<void>;
   button?: ReactElement | false | null;
 };
 
@@ -115,12 +113,11 @@ const StyledButtonContainer = styled.div`
 export const PREVIEW_MODAL_ID = 'preview-modal';
 
 export const AttachmentList = ({
-  targetableObject,
   title,
   attachments,
+  onUploadFiles,
   button,
 }: AttachmentListProps) => {
-  const { uploadAttachmentFile } = useUploadAttachmentFile();
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [previewedAttachment, setPreviewedAttachment] =
     useState<AttachmentWithFile | null>(null);
@@ -140,16 +137,6 @@ export const AttachmentList = ({
   const { openModal, closeModal } = useModal();
 
   const attachmentsWithFile = filterAttachmentsWithFile(attachments);
-
-  const onUploadFile = async (file: File) => {
-    await uploadAttachmentFile(file, targetableObject);
-  };
-
-  const onUploadFiles = async (files: File[]) => {
-    for (const file of files) {
-      await onUploadFile(file);
-    }
-  };
 
   const handlePreview = (attachment: AttachmentWithFile) => {
     if (!isAttachmentPreviewEnabled) return;

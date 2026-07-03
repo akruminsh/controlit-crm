@@ -43,26 +43,25 @@ const StyledDropZoneContainer = styled.div`
 export const FilesCard = () => {
   const targetRecord = useTargetRecord();
   const inputFileRef = useRef<HTMLInputElement>(null);
-  const { attachments, loading } = useAttachments(targetRecord);
+  const { attachments, loading, refetch } = useAttachments(targetRecord);
   const { uploadAttachmentFile } = useUploadAttachmentFile();
 
   const [isDraggingFile, setIsDraggingFile] = useState(false);
 
   const { t } = useLingui();
 
-  const onUploadFile = async (file: File) => {
-    await uploadAttachmentFile(file, targetRecord);
-  };
-
   const onUploadFiles = async (files: File[]) => {
     for (const file of files) {
-      await onUploadFile(file);
+      await uploadAttachmentFile(file, targetRecord);
     }
+
+    await refetch();
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (isDefined(e.target.files)) {
-      onUploadFiles(Array.from(e.target.files));
+      void onUploadFiles(Array.from(e.target.files));
+      e.target.value = '';
     }
   };
 
@@ -145,9 +144,9 @@ export const FilesCard = () => {
         multiple
       />
       <AttachmentList
-        targetableObject={targetRecord}
         title={t`All`}
         attachments={attachments ?? []}
+        onUploadFiles={onUploadFiles}
         button={
           canUploadFiles && (
             <Button
