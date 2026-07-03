@@ -53,6 +53,7 @@ export const useActivityTargetsForTargetableObjects = ({
     totalCount: totalCountActivityTargets,
     fetchMoreRecords: fetchMoreActivityTargets,
     hasNextPage,
+    refetch: refetchActivityTargets,
   } = useFindManyRecords<TaskTarget | NoteTarget>({
     skip,
     objectNameSingular:
@@ -69,6 +70,7 @@ export const useActivityTargetsForTargetableObjects = ({
     loadingActivityTargets,
     totalCountActivityTargets: totalCountActivityTargets ?? 0,
     fetchMoreActivityTargets,
+    refetchActivityTargets,
     hasNextPage,
   };
 };

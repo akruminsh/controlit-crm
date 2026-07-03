@@ -32,6 +32,10 @@ const TERRITORIES = new Set([
   'SWEDEN',
   'NETHERLANDS',
   'USA',
+  'EUROPE',
+  'IRELAND',
+  'SERBIA',
+  'BELGIUM',
 ]);
 
 const { isDryRun, skipBackup } = parseCommonArgs();

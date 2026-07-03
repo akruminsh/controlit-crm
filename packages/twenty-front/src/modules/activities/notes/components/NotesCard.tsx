@@ -30,7 +30,14 @@ const StyledNotesContainer = styled.div`
 
 export const NotesCard = () => {
   const targetRecord = useTargetRecord();
-  const { notes, loading, totalCountNotes, fetchMoreNotes, hasNextPage } =
+  const {
+    notes,
+    loading,
+    totalCountNotes,
+    fetchMoreNotes,
+    refetchNotes,
+    hasNextPage,
+  } =
     useNotes(targetRecord);
 
   const handleLastRowVisible = async () => {
@@ -54,6 +61,14 @@ export const NotesCard = () => {
   );
 
   const hasObjectUpdatePermissions = objectPermissions.canUpdateObjectRecords;
+
+  const handleCreateNote = async () => {
+    await openCreateActivity({
+      targetableObjects: [targetRecord],
+    });
+
+    await refetchNotes();
+  };
 
   if (loading && isNotesEmpty) {
     return <SkeletonLoader />;
@@ -79,11 +94,7 @@ export const NotesCard = () => {
             Icon={IconPlus}
             title={t`New note`}
             variant="secondary"
-            onClick={() =>
-              openCreateActivity({
-                targetableObjects: [targetRecord],
-              })
-            }
+            onClick={() => void handleCreateNote()}
           />
         )}
       </AnimatedPlaceholderEmptyContainer>
@@ -103,11 +114,7 @@ export const NotesCard = () => {
               size="small"
               variant="secondary"
               title={t`Add note`}
-              onClick={() =>
-                openCreateActivity({
-                  targetableObjects: [targetRecord],
-                })
-              }
+              onClick={() => void handleCreateNote()}
             />
           )
         }

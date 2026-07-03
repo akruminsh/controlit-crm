@@ -36,6 +36,7 @@ export const useOpenCreateActivityDrawer = ({
       activityObjectNameSingular === CoreObjectNameSingular.Task
         ? CoreObjectNameSingular.TaskTarget
         : CoreObjectNameSingular.NoteTarget,
+    skipPostOptimisticEffect: true,
     shouldMatchRootQueryFilter: true,
   });
 

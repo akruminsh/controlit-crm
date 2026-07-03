@@ -49,6 +49,7 @@ export const useActivities = <T extends Task | Note>({
     loadingActivityTargets,
     totalCountActivityTargets,
     fetchMoreActivityTargets,
+    refetchActivityTargets,
     hasNextPage,
   } = useActivityTargetsForTargetableObjects({
     objectNameSingular,
@@ -87,11 +88,28 @@ export const useActivities = <T extends Task | Note>({
       .filter(isDefined) as T[];
   };
 
+  const refetchActivities = async () => {
+    const result = await refetchActivityTargets();
+
+    if (!isDefined(result?.data)) {
+      return;
+    }
+
+    const activityTargets = getRecordsFromRecordConnection<
+      TaskTarget | NoteTarget
+    >({
+      recordConnection: result.data,
+    });
+
+    updateActivitiesInStore(activityTargets);
+  };
+
   return {
     activities: activities as T[],
     loading: loadingActivityTargets,
     totalCountActivities: totalCountActivityTargets,
     fetchMoreActivities,
+    refetchActivities,
     hasNextPage,
   };
 };

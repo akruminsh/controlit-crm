@@ -27,6 +27,7 @@ export const useNotes = (targetableObject: ActivityTargetableObject) => {
     loading,
     totalCountActivities,
     fetchMoreActivities,
+    refetchActivities,
     hasNextPage,
   } = useActivities<Note>({
     objectNameSingular: CoreObjectNameSingular.Note,
@@ -54,6 +55,7 @@ export const useNotes = (targetableObject: ActivityTargetableObject) => {
     loading,
     totalCountNotes: totalCountActivities,
     fetchMoreNotes: fetchMoreActivities,
+    refetchNotes: refetchActivities,
     hasNextPage,
   };
 };
