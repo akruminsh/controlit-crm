@@ -14,7 +14,10 @@ export const useCountries = () => {
     const countryCodes = getCountries();
 
     return countryCodes.reduce<Country[]>((result, countryCode) => {
-      const countryName = regionNamesInEnglish.of(countryCode);
+      const countryName =
+        countryCode === 'TR'
+          ? 'Turkey'
+          : regionNamesInEnglish.of(countryCode);
 
       if (!countryName) return result;
 

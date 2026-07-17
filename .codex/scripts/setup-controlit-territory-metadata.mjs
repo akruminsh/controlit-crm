@@ -36,6 +36,7 @@ const TERRITORY_OPTIONS = [
   ['Ireland', 'IRELAND', 'jade'],
   ['Serbia', 'SERBIA', 'red'],
   ['Belgium', 'BELGIUM', 'yellow'],
+  ['Turkey', 'TURKEY', 'orange'],
 ];
 
 const FIELD_DEFINITIONS = [
